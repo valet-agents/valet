@@ -1,0 +1,7 @@
+name: valet
+display_name: Valet
+description: >-
+  The Valet Concierge Agent — @Valet, the conversational surface that
+  builds Valet agents on users' behalf. One instance runs per
+  organization, auto-installed at org onboarding.
+category: platform
