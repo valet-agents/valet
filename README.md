@@ -12,7 +12,7 @@ Not in v1:
 
 - **Editing existing agents** in conversation. Deferred to v2.
 - **Collecting secrets** in chat. Handled by the dashboard wizard after publish.
-- **Running the final deploy.** @Valet's exit point is `valet agents draft publish`; `DeployAgent` is run by the dashboard wizard after any pending install/attach work.
+- **Running the final deploy.** @Valet's exit point is `valet agents drafts publish <draft_id>`; `DeployAgent` is run by the dashboard wizard after any pending install/attach work.
 - **Editing itself.** The agent named `valet` is reserved and cannot be modified from a user session.
 
 ## Project structure

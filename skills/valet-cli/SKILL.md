@@ -30,44 +30,61 @@ discard (delete).
 ### Checking out a draft
 
 ```
-valet agents draft checkout <draft_id> [<path>]
+valet agents drafts checkout <draft_id>
 ```
 
 - `<draft_id>` comes from the first message's JSON payload.
-- `<path>` is optional; defaults to `./<target_agent_name>`.
 
-This clones the draft branch into the given path. It also installs
-a `prepare-commit-msg` git hook in the checkout that appends
-`Valet-Source: concierge` to every commit message — you don't have
-to do this yourself.
-
-`cd` into the checkout directory before doing anything else.
-
-### Committing and pushing
-
-Inside the checkout, this is plain git. No Valet wrappers.
+This prints a freshly-minted, short-lived code.storage clone URL on
+stdout (metadata goes to stderr). Pipe the URL into `git clone`:
 
 ```
-git add -A
-git commit -m "<what you changed, in one line>"
-git push
+url=$(valet agents drafts checkout <draft_id>)
+git clone "$url" ./<target_agent_name>
+cd ./<target_agent_name>
 ```
 
-The `prepare-commit-msg` hook installed by `draft checkout` handles
-the attribution trailer.
+The URL is scoped to the ephemeral branch namespace and capped at
+session length. If it expires mid-session, re-run `checkout` to mint
+a new one and update the remote: `git remote set-url origin "$url"`.
+
+### Pushing changes to the draft branch
+
+After editing files in the checkout, ship them to the draft branch
+with:
+
+```
+valet agents drafts push <draft_id>
+```
+
+The CLI walks the working directory and calls the server's
+`PushDraftFiles` RPC. The server commits the changed files on the
+draft branch. The dashboard's draft view refreshes so the user can
+see what you wrote.
+
+Plain `git push` against the cloned URL does **not** work — Pierre's
+ephemeral endpoint can't enumerate ancestors across namespaces, so
+the local pack builder fails. Always use `drafts push`.
 
 ### Showing what's changed
 
+For uncommitted edits in your working tree:
+
 ```
-git diff origin/main...HEAD       # diff vs the base
-git log --oneline origin/main..   # commits on this draft
-git status                        # working tree state
+git status
+```
+
+For the server-truth state of the draft branch (what the dashboard
+sees):
+
+```
+valet agents drafts info <draft_id>
 ```
 
 ### Publishing
 
 ```
-valet agents draft publish [<draft_id>]
+valet agents drafts publish <draft_id>
 ```
 
 Merges the draft into `main` and deletes the draft branch. Returns
@@ -97,7 +114,7 @@ pending install/attach work is complete.
 ### Discarding
 
 ```
-valet agents draft discard [<draft_id>]
+valet agents drafts discard <draft_id>
 ```
 
 Deletes the draft branch and closes the draft. Use only when the
@@ -110,8 +127,8 @@ directly. Useful if the user references a draft by name or if you
 need to sanity-check state.
 
 ```
-valet agents drafts list [--agent <name>]
-valet agents drafts show <draft_id>
+valet agents drafts [--agent <name>]   # bare group lists drafts
+valet agents drafts info <draft_id>    # detail for one draft
 ```
 
 ## Catalog queries
@@ -121,29 +138,26 @@ Use these before committing to a `catalog:` reference in a user's
 than writing a broken reference.
 
 ```
-valet connectors catalog            # list catalog connectors
-valet connectors describe <name>    # read one connector's details
-valet channels catalog              # list catalog channels
-valet channels describe <name>      # read one channel's details
+valet connectors catalog              # list catalog connectors
+valet connectors catalog get <name>   # read one connector's details
+valet channels catalog                # list catalog channels
+valet channels catalog get <name>     # read one channel's details
 ```
 
-`describe` prints the catalog entry's description, required secrets,
-and any slot documentation. Use this to decide what secret slots to
-expose in the user's manifest (and what description text to give
+`catalog get` prints the catalog entry's transport, required secret
+slots, and slot documentation. Use this to decide what secret slots
+to expose in the user's manifest (and what description text to give
 them — the dashboard's wizard uses those descriptions when it asks
 the user for values).
 
-## Commit log with attribution
+## Commit log
 
 ```
 valet agents log [<name>] [--limit N]
 ```
 
-Shows the agent's commit history with the `Valet-Source` trailer
-parsed out of each commit message. Sources are `concierge` (you),
-`cli` (a developer on their laptop), or `system` (Valet's own ops
-tooling). Useful if the user asks "what changed" or "when did I
-last deploy."
+Shows the agent's commit history on `main` (most recent first).
+Useful if the user asks "what changed" or "when did I last deploy."
 
 ## Important don'ts
 

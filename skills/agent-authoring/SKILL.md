@@ -23,8 +23,9 @@ channels/
 ```
 
 Nothing is auto-generated. You are writing these files directly into
-the draft checkout, committing, and pushing. Be deliberate — every
-line in these files becomes part of the agent's prompt.
+the draft checkout and pushing the working directory to the draft
+branch with `valet agents drafts push`. Be deliberate — every line in
+these files becomes part of the agent's prompt.
 
 ## `SOUL.md` — identity and behavior
 
@@ -166,7 +167,7 @@ channels:
 ```
 
 For catalog channels that need secrets or event filters, run
-`valet channels describe <name>` to see what the catalog entry
+`valet channels catalog get <name>` to see what the catalog entry
 expects.
 
 ## `skills/` — named procedures
@@ -288,10 +289,11 @@ the agent needs to parse, and the entire behavior fits in `SOUL.md`.
 
 ## Writing posture
 
-- **Commit in small steps.** One logical change per commit ("add
-  valet.yaml scaffold", "write SOUL.md workflow section", "add
-  Slack connector"). The user watches the draft evolve.
-- **Narrate as you go.** When you commit a change, tell the user in
+- **Push in small steps.** One logical change per `valet agents
+  drafts push` ("add valet.yaml scaffold", "write SOUL.md workflow
+  section", "add Slack connector"). The user watches the draft
+  evolve in the dashboard.
+- **Narrate as you go.** When you push a change, tell the user in
   plain language what you just did and why.
 - **Ask when the user's intent is genuinely ambiguous, not to
   collect a checklist.** "Which Slack channel should the briefing
@@ -309,9 +311,9 @@ entry exists:
 
 ```
 valet connectors catalog
-valet connectors describe <name>
+valet connectors catalog get <name>
 valet channels catalog
-valet channels describe <name>
+valet channels catalog get <name>
 ```
 
 If the user wants a connector or channel that isn't in the catalog,
