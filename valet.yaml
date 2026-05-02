@@ -5,3 +5,6 @@ description: >-
   builds Valet agents on users' behalf. One instance runs per
   organization, auto-installed at org onboarding.
 category: platform
+connectors:
+  - catalog: valet
+    description: Valet CLI
