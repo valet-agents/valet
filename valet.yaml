@@ -5,3 +5,11 @@ description: >-
   builds Valet agents on users' behalf. One instance runs per
   organization, auto-installed at org onboarding.
 category: platform
+connectors:
+  # The `valet` catalog entry is hidden (system-only) and produces
+  # the per-org Valet CLI launcher with VALET_API_TOKEN +
+  # VALET_SOURCE baked into its environment. The token is minted
+  # fresh by valet-api on every container sync — never stored.
+  # See docs/proposals/valet-agent.md and docs/design/auth.md.
+  - catalog: valet
+    description: Per-org Valet CLI launcher (system-only).
