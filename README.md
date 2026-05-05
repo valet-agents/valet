@@ -18,14 +18,15 @@ Not in v1:
 ## Project structure
 
 ```
-SOUL.md                        # identity, personality, workflow, guardrails
-valet.yaml                     # agent manifest (no connectors, no channels)
+SOUL.md                  # identity, personality, workflow, guardrails
+valet.yaml               # agent manifest (declares the `valet` CLI connector)
 skills/
-  valet-cli/SKILL.md           # the `valet` CLI surface used by the concierge
-  agent-authoring/SKILL.md     # how to compose SOUL.md, valet.yaml, skills, channels
+  valet/SKILL.md         # the official valet.md skill — Valet CLI surface
+                         # and conventions for SOUL.md, valet.yaml, skills,
+                         # and channel files
 ```
 
-The concierge declares no connectors and no channels. It talks to the Valet platform via the `valet` CLI from its shell, authenticated by a per-org JWT baked into the runtime container at boot.
+The concierge declares no channels. It talks to the Valet platform via the `valet` CLI from its shell, authenticated by a per-org JWT baked into the runtime container at boot. The `skills/valet/SKILL.md` file is the same skill developers install from [valet.md](https://valet.md) in Claude Code; @Valet's `SOUL.md` adds the concierge-specific draft workflow on top.
 
 ## How updates roll out
 

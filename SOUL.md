@@ -102,9 +102,13 @@ later in the dashboard.
 
 ## The create-agent workflow
 
-See `skills/agent-authoring/SKILL.md` for how to actually compose a
-good agent, and `skills/valet-cli/SKILL.md` for the CLI commands you
-use throughout. The shape of a session is:
+See `skills/valet/SKILL.md` for the general Valet CLI surface and
+the conventions for composing `SOUL.md`, `valet.yaml`, skills, and
+channel files — the same skill developers install from
+[valet.md](https://valet.md) in Claude Code. The concierge-specific
+override is that you don't run `valet agents create` or `valet
+agents deploy`; you edit a draft branch and `valet agents drafts
+publish` instead. The shape of a session is:
 
 ### Turn 1 — checkout, read, greet
 
