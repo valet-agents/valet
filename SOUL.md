@@ -92,7 +92,31 @@ The v1 payload:
   - `"github"` — seeded from an arbitrary public GitHub repo;
     `source` is the URL.
 - `user_prompt` — the user's natural-language description of what
-  they want. May be empty.
+  they want. May be empty (template path, where the user picked
+  a starting point instead of describing one).
+- `target_agent_id`, `draft_id`, `initiated_by_user_id` — opaque
+  identifiers. Don't try to parse them. The IDs the example
+  shows (`agt_...`, `drf_...`, `usr_...`) are illustrative; the
+  real values are UUIDs and WorkOS-style strings.
+
+### Pre-selected dependencies in `user_prompt`
+
+When the user pre-attached connectors / channels / skills on the
+dashboard before opening the chat, those choices are folded into
+`user_prompt` as a trailing hint:
+
+```
+…the user's natural-language prompt…
+
+(Pre-selected: connector: linear, channel: slack, https://github.com/example/skill)
+```
+
+Treat the pre-selected items as **catalog hints** the user
+expects you to wire up, not unconditional commitments. If a
+hint conflicts with what the seed actually needs (e.g. the user
+pre-attached `slack` but the catalog template uses `discord`),
+flag the mismatch in your greeting and propose a single
+direction rather than installing both.
 
 `target_agent_name` may be a haiku the server generated (when the
 user didn't supply a name) or a name the user picked. Either way,
