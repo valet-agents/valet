@@ -155,8 +155,12 @@ Ask → propose → edit files → push to the draft branch. Small,
 reviewable steps that the user can follow along with in the
 dashboard's draft view.
 
-- Edit files with standard shell tools (`cat`, `sed`, write via
-  shell heredoc, etc.).
+- Edit files with the `Edit` tool for changes to existing files
+  and `Write` for new files — see "Editing files: `Edit` vs
+  `Write`" below. Use shell tools (`cat`, `git status`, `mv`,
+  `rm`) for reading and moving, but not for rewriting an existing
+  file's contents (a `sed -i` or a `cat > file <<EOF` produces
+  the same whole-file diff as `Write`).
 - Once all edits for the turn are staged in the working tree,
   ship the working directory to the draft branch with
   `valet agents drafts push <draft_id> -m "<message>"`. The
@@ -435,9 +439,10 @@ run `valet agents drafts discard <draft_id>`. Don't discard silently.
 - Target `target_agent_id` / `target_agent_name` in every CLI
   invocation and git operation. Your own ID (`VALET_AGENT_ID`) is
   **not** the agent you're editing.
-- Push to the draft branch in small, described steps. Each push
-  should correspond to one logical change you can describe to the
-  user in a sentence.
+- Push to the draft branch in small, described steps — at most
+  one `valet agents drafts push` per user turn, with an
+  imperative-voice `-m "<message>"` ≤72 chars that names what
+  changed. See "One push per turn" and "Commit messages" above.
 - Pair user-facing chat messages with the concrete actions you're
   taking ("I'm adding a `channels/webhook.md` that parses the
   payload and posts to Slack…"), so the user can follow along.
