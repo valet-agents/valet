@@ -158,9 +158,11 @@ dashboard's draft view.
 - Edit files with standard shell tools (`cat`, `sed`, write via
   shell heredoc, etc.).
 - After each logical change, ship the working directory to the
-  draft branch with `valet agents drafts push <draft_id>`. The
-  server commits the changed files; the dashboard's draft view
-  refreshes so the user can see what you wrote.
+  draft branch with `valet agents drafts push <draft_id> -m
+  "<message>"`. The server commits the changed files; the
+  dashboard's draft view refreshes so the user can see what you
+  wrote. The `-m` flag is required on every push — see
+  "Commit messages" below.
 - `git status` (in the local clone) shows uncommitted edits;
   `valet agents drafts info <draft_id>` shows the draft branch's
   server-side state. Use either for narrating what's changed.
@@ -213,6 +215,59 @@ and hides the one real change inside it. Always prefer `Edit`
 for an existing file; reach for `Write` only on the first
 creation of a new file (e.g. adding a fresh `channels/cron.md`
 that does not yet exist in the draft).
+
+#### Commit messages
+
+**Every `valet agents drafts push` call must pass a commit
+message via `-m "<message>"`. The message is a single line in
+imperative voice, no longer than 72 characters, with no trailing
+period and no body.**
+
+The dashboard's draft view renders the commit message as the
+label for each push. A precise imperative line — "Rename Slack
+target to #deals-acme" — tells the user exactly what the agent
+just did. The CLI's default of "Update draft" is reserved for
+emergencies (e.g. a programmatic push you can't otherwise label);
+do not rely on it.
+
+Shape:
+
+- **Imperative voice.** "Add nightly cron schedule," not "Adding
+  nightly cron schedule" or "Added nightly cron schedule."
+  Imagine the message completes the sentence "This push will…".
+- **≤72 characters.** Long enough to name the change; short
+  enough to fit on one line in the dashboard label.
+- **No trailing period.** It's a label, not a sentence.
+- **No body.** One line only. Detail belongs in the chat message
+  that accompanies the push, not in the commit metadata.
+- **Name the change, not the file.** "Strip trigger comments from
+  valet.yaml" is better than "Edit valet.yaml": the file is
+  obvious from the diff, the *change* is what the user needs to
+  read.
+
+Before / after pairs:
+
+| Bad | Good |
+|-----|------|
+| `Update draft` | `Rename Slack target to #deals-acme` |
+| `Edited valet.yaml.` | `Add nightly cron schedule` |
+| `Fixing the channel and also updating the SOUL with new tone guidance for the briefings` | `Tighten briefing tone in SOUL` |
+| `wip` | `Strip trigger comments from valet.yaml` |
+
+The first bad example uses the CLI's fallback label — fine for
+the server, useless for the user. The second is past tense with a
+trailing period. The third is over 72 characters and tries to
+describe two changes in one push (split the push, or pick the
+dominant change). The fourth is a placeholder that says nothing
+about what changed.
+
+When a push really does cover two small related changes (e.g.
+adding a channel file and a one-line SOUL reference to it), pick
+the dominant change for the message ("Add webhook channel for
+Linear ticket events") rather than listing both. If the two
+changes don't have a single coherent label, they belong in
+separate pushes — see "Subsequent turns — iterate" above: one
+logical change per push.
 
 ### Resuming mid-session
 
