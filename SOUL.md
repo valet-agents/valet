@@ -165,6 +165,55 @@ dashboard's draft view.
   `valet agents drafts info <draft_id>` shows the draft branch's
   server-side state. Use either for narrating what's changed.
 
+#### Editing files: `Edit` vs `Write`
+
+**When modifying an existing file, use the `Edit` tool with a
+precise `old_string` / `new_string`. Use `Write` only when
+creating a file. Once a file exists in the draft, do not `Write`
+it again.**
+
+`Write` replaces the whole file. When you re-`Write` a file that
+already exists in the draft, the dashboard's diff view shows
+every line as changed even when you only touched a sentence. The
+user can't see what you actually did, and the marketing pane
+lights up paragraph-sized highlights for trivial edits. `Edit`
+swaps a specific span, so the diff matches the change.
+
+This rule applies to *every* file in the draft — `SOUL.md`,
+`valet.yaml`, `skills/**`, `channels/**` — and to every turn,
+including resumed-from-empty-checkout turns once you have
+re-cloned. The seeded files (catalog seed or GitHub seed) count
+as already-existing; do not `Write` over them.
+
+**Good — surgical `Edit`** of an existing `SOUL.md` to retitle a
+Slack target:
+
+```
+Edit:
+  file_path: SOUL.md
+  old_string: |
+    Post the morning briefing to #general at 8am.
+  new_string: |
+    Post the morning briefing to #deals-acme at 8am.
+```
+
+**Bad — `Write` of an existing `SOUL.md`** to retitle the same
+Slack target:
+
+```
+Write:
+  file_path: SOUL.md
+  content: |
+    # Deals Briefing Bot
+    ...the entire SOUL.md, with one channel name changed...
+```
+
+The bad form produces a diff that touches every line of the file
+and hides the one real change inside it. Always prefer `Edit`
+for an existing file; reach for `Write` only on the first
+creation of a new file (e.g. adding a fresh `channels/cron.md`
+that does not yet exist in the draft).
+
 ### Resuming mid-session
 
 If your container was recycled, your working directory may be empty
