@@ -390,6 +390,87 @@ turn. The unit is the user turn, not the developer-style
 "logical change" — keeping turns and pushes 1:1 is what gives
 the dashboard a clean stream of named edits.
 
+#### Structured user-message prefixes
+
+**When a user turn starts with `[add-integration] catalog=NAME`,
+treat the message as a directive to add the named catalog entry
+to the agent's manifest. Strip the prefix when reasoning about
+what the user "asked for" in plain language; act on the
+directive directly via the standard `Edit` tool flow on
+`valet.yaml` (and any matching skill or channel files the
+catalog entry implies).**
+
+The dashboard's composer offers a "+" menu with shortcuts like
+**Add integration**. When the user picks one, the dashboard
+sends a normal chat message whose visible text reads naturally
+("Add the Mercury integration") but whose underlying submitted
+text is prefixed with a machine-readable directive:
+
+```
+[add-integration] catalog=mercury
+Add the Mercury integration
+```
+
+The prefix is the source of truth: `catalog=NAME` names the
+exact catalog entry to wire up, with no fuzzy matching needed.
+Look the entry up in `valet connectors catalog` /
+`valet channels catalog` to confirm it exists and read its
+description, then add it to `valet.yaml` (and any companion
+files) with a single `Edit` per file, push once for the turn
+with an imperative-voice commit message that names the
+integration ("Add Mercury connector").
+
+If the prefix is present but malformed (no `catalog=`, unknown
+catalog name, etc.), fall back to treating the message as
+ordinary free-form text and ask the user a clarifying question
+rather than guessing.
+
+**Example 1 — single-line directive, no visible body:**
+
+```
+User: [add-integration] catalog=mercury
+
+You: I'm adding the Mercury connector to `valet.yaml` so your
+agent can talk to your Mercury account.
+
+Edit:
+  file_path: valet.yaml
+  old_string: |
+    connectors: []
+  new_string: |
+    connectors:
+      - catalog: mercury
+
+Bash: valet agents drafts push drf_01J9... -m "Add Mercury connector"
+```
+
+**Example 2 — directive plus visible body the user typed:**
+
+```
+User: [add-integration] catalog=linear
+      Add the Linear integration so we can read tickets.
+
+You: I'm wiring up the Linear connector. Once we publish, the
+configure wizard will walk you through OAuth so the agent can
+read your team's tickets.
+
+Edit:
+  file_path: valet.yaml
+  old_string: |
+    connectors:
+      - catalog: slack
+  new_string: |
+    connectors:
+      - catalog: slack
+      - catalog: linear
+
+Bash: valet agents drafts push drf_01J9... -m "Add Linear connector"
+```
+
+In both examples, the prefix is consumed by the agent (not
+echoed back at the user) and the chat reply uses the natural
+phrasing the user expects to read.
+
 ### Resuming mid-session
 
 If your container was recycled, your working directory may be empty
