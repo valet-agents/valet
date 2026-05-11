@@ -157,12 +157,13 @@ dashboard's draft view.
 
 - Edit files with standard shell tools (`cat`, `sed`, write via
   shell heredoc, etc.).
-- After each logical change, ship the working directory to the
-  draft branch with `valet agents drafts push <draft_id> -m
-  "<message>"`. The server commits the changed files; the
-  dashboard's draft view refreshes so the user can see what you
-  wrote. The `-m` flag is required on every push — see
-  "Commit messages" below.
+- Once all edits for the turn are staged in the working tree,
+  ship the working directory to the draft branch with
+  `valet agents drafts push <draft_id> -m "<message>"`. The
+  server commits the changed files; the dashboard's draft view
+  refreshes so the user can see what you wrote. The `-m` flag
+  is required on every push — see "Commit messages" below. Push
+  at most once per turn — see "One push per turn" below.
 - `git status` (in the local clone) shows uncommitted edits;
   `valet agents drafts info <draft_id>` shows the draft branch's
   server-side state. Use either for narrating what's changed.
@@ -265,9 +266,125 @@ When a push really does cover two small related changes (e.g.
 adding a channel file and a one-line SOUL reference to it), pick
 the dominant change for the message ("Add webhook channel for
 Linear ticket events") rather than listing both. If the two
-changes don't have a single coherent label, they belong in
-separate pushes — see "Subsequent turns — iterate" above: one
-logical change per push.
+changes don't have a single coherent label, hold one of them for
+the next turn rather than splitting into two pushes — see "One
+push per turn" below.
+
+#### One push per turn
+
+**Make at most one `valet agents drafts push` call per user
+turn. When a turn requires changes to multiple files, stage all
+the edits in the working tree first, then push once. Do not call
+`valet agents drafts push` two times in the same turn.**
+
+`valet agents drafts push` walks the working directory and sends
+the whole tree to the server's `PushDraftFiles` RPC as a single
+commit. The request schema is a `draft_id`, a `commit_message`,
+and a repeated `files` list — one entry per path in the tree.
+The server diffs against the draft tip and writes one commit per
+call, regardless of how many paths changed. Two pushes in one
+turn produce two dashboard rows, two commit-message labels, and
+two stream events — the user sees the turn fragmented even
+though it was conceptually one change.
+
+There's a worse failure mode: the server treats any path on the
+draft tip that is *absent* from the push set as a deletion. If
+you push after writing only some of the files you meant to edit
+this turn — say you finished editing `SOUL.md` but haven't yet
+created the new `channels/webhook.md` you also intended — the
+intermediate state is what ships. The dashboard's draft view
+shows the half-finished turn, and the marketing pane highlights
+the partial change. Stage every file the turn needs before
+pushing.
+
+So the order within a turn is:
+
+1. Read whatever you need to plan the change.
+2. `Edit` / `Write` every file the turn touches, into the
+   working tree.
+3. Run `valet agents drafts push <draft_id> -m "<message>"`
+   exactly once.
+
+**Good — one push covers a two-file turn** (adding a new webhook
+channel and referencing it from `SOUL.md`):
+
+```
+Edit:
+  file_path: SOUL.md
+  old_string: |
+    The agent posts updates to Slack.
+  new_string: |
+    The agent posts updates to Slack and accepts webhook events
+    from Linear via channels/webhook.md.
+
+Write:
+  file_path: channels/webhook.md
+  content: |
+    # Webhook channel
+    Parses Linear payloads and forwards to the agent loop.
+
+Bash: valet agents drafts push drf_01J9... -m "Add webhook channel for Linear ticket events"
+```
+
+**Bad — two pushes for the same turn:**
+
+```
+Edit:
+  file_path: SOUL.md
+  ...
+
+Bash: valet agents drafts push drf_01J9... -m "Reference webhook channel from SOUL"
+
+Write:
+  file_path: channels/webhook.md
+  ...
+
+Bash: valet agents drafts push drf_01J9... -m "Add webhook channel for Linear ticket events"
+```
+
+The bad form is worse than just noisy. The first push ships a
+`SOUL.md` that references a `channels/webhook.md` that doesn't
+exist yet on the draft tip — and since the first push doesn't
+include the new file, the draft is briefly in an internally
+inconsistent state. The dashboard's draft view, the streaming
+diff, and the marketing pane all see that broken intermediate.
+
+**Good — one push covers a multi-file refactor** (renaming a
+channel from `cron` to `daily` across `valet.yaml`, `SOUL.md`,
+and `channels/cron.md` → `channels/daily.md`):
+
+```
+Edit:
+  file_path: valet.yaml
+  old_string: |
+    channel: cron
+  new_string: |
+    channel: daily
+
+Edit:
+  file_path: SOUL.md
+  old_string: |
+    See channels/cron.md for the schedule.
+  new_string: |
+    See channels/daily.md for the schedule.
+
+Bash: mv channels/cron.md channels/daily.md
+
+Bash: valet agents drafts push drf_01J9... -m "Rename cron channel to daily"
+```
+
+One push, one dashboard row, one commit message that names the
+real change. The rename, the YAML reference, and the SOUL
+reference all ship together so the draft is never in a state
+where `valet.yaml` points at a missing channel file.
+
+If a turn really does contain two unrelated changes — say the
+user asks to fix the briefing time *and* asks an offhand
+question that turns into a one-line SOUL tweak — pick the
+dominant one for this turn and hold the other for a follow-up
+turn. The unit is the user turn, not the developer-style
+"logical change" — keeping turns and pushes 1:1 is what gives
+the dashboard a clean stream of named edits.
 
 ### Resuming mid-session
 
