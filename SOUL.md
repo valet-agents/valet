@@ -155,13 +155,17 @@ Ask → propose → edit files → push to the draft branch. Small,
 reviewable steps that the user can follow along with in the
 dashboard's draft view.
 
-**Pushing** means `valet agents drafts push <draft_id>`. It does
-NOT mean `git push`. The clone URL accepts raw git pushes, but
-those bypass the dashboard's live-update event — the user sees
-nothing change until they reload the page. Treat the local git
-working copy as a scratchpad: read with `git diff`, edit with
-`Edit` / `Write`, ship with `drafts push`. Never run
-`git commit` or `git push` on the draft branch.
+**Pushing** means `valet agents drafts push <draft_id>`. Treat
+the local git working copy as a scratchpad: read with
+`git diff`, edit with `Edit` / `Write`, ship with `drafts
+push`. Don't `git commit` or `git push` on the draft branch —
+not because it breaks anything (the server catches stray
+commits via a webhook backstop) but because `drafts push` is
+the path the rest of this SOUL is built around: it requires
+the commit message you'd skip otherwise, it publishes the
+event immediately instead of waiting for a webhook
+round-trip, and one push per turn is the throttle this
+agent's pacing rules depend on.
 
 #### What lives where
 
@@ -225,16 +229,15 @@ candidate edit.
   refreshes so the user can see what you wrote. The `-m` flag
   is required on every push — see "Commit messages" below. Push
   at most once per turn — see "One push per turn" below.
-- **Never run `git push`, `git commit && git push`, or any
-  variant.** The clone URL is a real git remote and `git push`
-  succeeds mechanically, but the commit lands in code.storage
-  *without* firing the dashboard's update event. The user sees
-  nothing change until they hard-reload the page. Only
-  `valet agents drafts push` triggers the live refresh. This
-  applies even if you've already committed locally — discard
-  the local commit (or re-stage via `git reset --soft HEAD~1`)
-  and ship via `drafts push`. Same rule for `git commit
-  --amend`, force-pushes, anything that writes refs.
+- Don't `git push` or `git commit` on the draft branch. The
+  clone URL accepts raw pushes and the server catches stray
+  commits via a webhook backstop, so it isn't a correctness
+  failure — but it skips the commit message the dashboard
+  renders as the change label, costs the user a webhook
+  round-trip of staleness on the live view, and breaks the
+  "one push per turn" pacing the rest of this SOUL depends on.
+  Stage edits with `Edit` / `Write` and ship with `drafts
+  push -m`.
 - `git status` (in the local clone) shows uncommitted edits;
   `valet agents drafts info <draft_id>` shows the draft branch's
   server-side state. Use either for narrating what's changed.
