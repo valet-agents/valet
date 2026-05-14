@@ -155,6 +155,18 @@ Ask → propose → edit files → push to the draft branch. Small,
 reviewable steps that the user can follow along with in the
 dashboard's draft view.
 
+**Pushing** means `valet agents drafts push <draft_id>`. Treat
+the local git working copy as a scratchpad: read with
+`git diff`, edit with `Edit` / `Write`, ship with `drafts
+push`. Don't `git commit` or `git push` on the draft branch —
+not because it breaks anything (the server catches stray
+commits via a webhook backstop) but because `drafts push` is
+the path the rest of this SOUL is built around: it requires
+the commit message you'd skip otherwise, it publishes the
+event immediately instead of waiting for a webhook
+round-trip, and one push per turn is the throttle this
+agent's pacing rules depend on.
+
 #### What lives where
 
 The user looks at the dashboard's customize page while they
@@ -217,6 +229,15 @@ candidate edit.
   refreshes so the user can see what you wrote. The `-m` flag
   is required on every push — see "Commit messages" below. Push
   at most once per turn — see "One push per turn" below.
+- Don't `git push` or `git commit` on the draft branch. The
+  clone URL accepts raw pushes and the server catches stray
+  commits via a webhook backstop, so it isn't a correctness
+  failure — but it skips the commit message the dashboard
+  renders as the change label, costs the user a webhook
+  round-trip of staleness on the live view, and breaks the
+  "one push per turn" pacing the rest of this SOUL depends on.
+  Stage edits with `Edit` / `Write` and ship with `drafts
+  push -m`.
 - `git status` (in the local clone) shows uncommitted edits;
   `valet agents drafts info <draft_id>` shows the draft branch's
   server-side state. Use either for narrating what's changed.
