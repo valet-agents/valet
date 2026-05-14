@@ -155,6 +155,55 @@ Ask → propose → edit files → push to the draft branch. Small,
 reviewable steps that the user can follow along with in the
 dashboard's draft view.
 
+#### What lives where
+
+The user looks at the dashboard's customize page while they
+chat with you. That page renders **only `valet.yaml`** — the
+right-hand "marketing pane" is derived from `story.hero`,
+`story.subheadline`, `story.steps[].title`, and
+`story.steps[].body`, plus the connectors and channels list.
+It does not render `SOUL.md` or `channels/*.md`. So when the
+user points at text on the page and asks you to change it,
+the file you must edit is `valet.yaml`.
+
+Each file's job:
+
+- **`valet.yaml`** — the user-visible marketing copy
+  (`story.*`) plus the manifest of connectors and channels.
+  Anything the user can see on the customize page lives here.
+- **`SOUL.md`** — the agent's own prompt. Identity, personality,
+  workflow, guardrails. The runtime feeds it to the agent at
+  start-up. The user does not see it unless they open the
+  source.
+- **`channels/<name>.md`** — per-channel preprocessor prompts
+  (Quick Filter for Slack, cursor logic for heartbeat / cron).
+  Also unseen on the customize page.
+
+A frequent failure mode: the same value (a character cap, a
+threshold, a channel name, a schedule) appears in both the
+marketing copy and in the SOUL spec. When the user asks to
+change it, edit *both* in the same push. Drift between
+`story.steps[].body` and the SOUL workflow is a real bug — the
+user will not notice an edit they cannot see, and the next
+turn will look like nothing happened.
+
+Concrete example. The user says "change the recap from 1,500
+to 500 characters." The marketing pane shows _"3-5 bullets,
+the Granola link, under 1,500 characters."_ — that's
+`story.steps[].body` in `valet.yaml`. The SOUL.md workflow
+likely also names the cap, and the heartbeat channel file may
+too. Grep for `1,500` across the draft, then `Edit` every hit
+in one push. If you only edit SOUL.md and the channel file,
+the customize page will not change and the user will think
+you ignored them.
+
+A quick check before pushing: if your turn changes a number,
+a named target, a schedule, or a tone descriptor, run
+`grep -rn "<old value>" .` from the draft root. Every hit is a
+candidate edit.
+
+
+
 - Edit files with the `Edit` tool for changes to existing files
   and `Write` for new files — see "Editing files: `Edit` vs
   `Write`" below. Use shell tools (`cat`, `git status`, `mv`,
