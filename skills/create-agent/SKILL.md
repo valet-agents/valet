@@ -79,15 +79,18 @@ clicked a chip with a specific intent.
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `edit_schedule`      | Open the channel file that owns the schedule (`channels/heartbeat.md`, `channels/cron.md`, or the inline `type: heartbeat` / `type: cron` in `valet.yaml`). |
 | `edit_slack_target`  | Open `channels/slack.md` (or wherever the target channel name lives).                                                                                       |
-| `connect_oauth`      | No file work. Explain that OAuth happens in the dashboard's configure wizard after publish; don't try to collect credentials.                               |
-| `explain`            | No file work, no clone. Describe the agent from what's already in the envelope and the customize pane. Don't `valet agents drafts checkout`.                |
+| `connect_oauth`      | No file work, no checkout. Explain that OAuth happens in the dashboard's configure wizard after publish; don't try to collect credentials.                  |
+| `explain`            | No file work, no checkout. Describe the agent from what's already in the envelope and the customize pane. Don't `valet agents drafts checkout`.             |
 
 Unknown hint: ignore it and fall back to the no-hint path.
 
-For hints that need file work, you still need a checkout — but
-read only the one file the hint names. Don't pre-read
-`README.md`, `AGENTS.md`, or the rest of the manifest unless
-the user's question requires it.
+For hints that need file work (`edit_schedule`, `edit_slack_target`),
+check out the draft first per the **Reading and editing draft
+files** procedure in `SOUL.md` — then read only the one file the
+hint names. Don't pre-read `README.md`, `AGENTS.md`, or the rest
+of the manifest unless the user's question requires it. The
+`connect_oauth` and `explain` fast paths answer without files, so
+they skip the checkout entirely.
 
 ### No hint: discover only what you need
 
@@ -107,16 +110,17 @@ manifest. Answer the question that was asked.
 
 ### Checkout when needed
 
-When you do need files:
+When you do need files, check out the draft per the **Reading
+and editing draft files** procedure in `SOUL.md`:
 
-1. `url=$(valet agents drafts checkout <draft_id>)` from your
-   working directory.
-2. `git clone "$url" ./<target_agent_name>-<short_draft_id>/`
-   using the first 8 characters of `draft_id` as
-   `<short_draft_id>`. This keeps clones from colliding when
-   the same agent has multiple open drafts.
-3. `cd` into that directory.
-4. Read the specific file(s) the question needs.
+```sh
+cd "$(valet agents drafts checkout <draft_id>)"
+```
+
+That lands you in a directory with the draft's working tree
+already checked out. Don't hand-roll `git clone` / `git checkout`
+/ `git fetch` — the command does it. Then read the specific
+file(s) the question needs.
 
 For `seed.kind == "blank"`, expect only a minimal
 `valet.yaml`. For `catalog` and `github` seeds, the draft
@@ -125,15 +129,20 @@ already-existing (use `Edit`, not `Write`).
 
 ## Subsequent turns — iterate
 
-Ask → propose → edit → push. Small, reviewable steps the user
-can follow in the dashboard's draft view.
+Ask → propose → edit → validate → push. Small, reviewable steps
+the user can follow in the dashboard's draft view.
 
 Within a single turn:
 
-1. Read whatever you need to plan the change.
+1. Check out the draft if you haven't this turn —
+   `cd "$(valet agents drafts checkout <draft_id>)"` — then read
+   whatever you need to plan the change.
 2. `Edit` (or `Write`, only for genuinely new files) every
    file the turn touches, into the working tree.
-3. Run `valet agents drafts push <draft_id> -m "<message>"`
+3. Run `valet agents drafts validate <draft_id>` and fix any
+   reported errors (per the validate-before-push rule in
+   `SOUL.md`).
+4. Run `valet agents drafts push <draft_id> -m "<message>"`
    exactly once.
 
 ### `Edit` vs `Write`
@@ -198,7 +207,7 @@ free-form text and ask a clarifying question.
 
 ## Mid-session tools
 
-- `git status` (in the local clone) shows uncommitted edits.
+- `git status` (from inside the checkout) shows uncommitted edits.
 - `valet agents drafts info <draft_id>` shows server-side
   state of the draft branch.
 - `valet agents drafts current` reads `$VALET_SESSION_ID` and
@@ -210,10 +219,11 @@ free-form text and ask a clarifying question.
 
 If your container was recycled, your working directory may be
 empty when a new turn starts even though the session has
-history. Detect this at the start of every turn that needs
-file work: if the expected checkout directory is missing,
-re-run `valet agents drafts checkout <draft_id>` and re-clone
-before proceeding.
+history. At the start of every turn that needs file work, just
+re-run the checkout —
+`cd "$(valet agents drafts checkout <draft_id>)"` is idempotent
+and re-creates the directory if it's gone, so there's no need to
+test for it first.
 
 ## Publishing
 
