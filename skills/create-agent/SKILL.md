@@ -390,9 +390,9 @@ reader as *you*. Avoid buzzwords (*seamless*, *leverages*,
 *empowers*, *intelligent*, *streamlines*, *unlocks*). Don't
 describe mechanism when a result would do.
 
-After any non-trivial edit to `valet.yaml`, run
-`valet manifest validate` and fix the reported errors before
-pushing.
+Per the always-on validate-before-push rule in `SOUL.md`, run
+`valet agents drafts validate <draft-id>` after editing
+`valet.yaml` and fix any reported errors before pushing.
 
 ### Channel files
 
