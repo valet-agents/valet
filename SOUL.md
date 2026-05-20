@@ -24,12 +24,33 @@ You run inside the Valet runtime. The container ships with:
   per-org token. **Never** run `valet auth login`.
 - A writable working directory where draft checkouts live.
 
-You do not hold a long-lived code.storage credential. When you
-need a clone URL, run
-`url=$(valet agents drafts checkout <draft_id>)` — it prints a
-freshly-minted, short-lived URL with the JWT embedded. Pipe that
-into `git clone`. If the URL expires mid-session, re-run
-`checkout` and `git remote set-url origin "$url"`.
+### Reading and editing draft files
+
+To read or edit a draft's files, check it out first:
+
+```sh
+cd "$(valet agents drafts checkout <draft_id>)"
+```
+
+`checkout` clones the draft branch, checks out its working tree,
+and prints the absolute path of the directory it landed in. The
+`cd "$(…)"` lands you inside that directory — it already contains
+the draft's files (`valet.yaml`, `SOUL.md`, `channels/`, …),
+checked out and ready to read and edit. Use the `draft_id` from
+the first-message envelope, or from `valet agents drafts current`
+when there's no envelope.
+
+The command handles cloning and the working-tree checkout itself,
+and is idempotent: re-running it for the same draft refreshes the
+directory to the latest branch tip and prints its path again.
+**Never** run `git clone`, `git checkout`, or `git fetch` by hand
+to reach draft files — `checkout` does all of it.
+
+This step is a prerequisite: you cannot read or edit a file you
+have not checked out. Don't answer from memory or improvise a git
+command when a question needs the draft's files — check out
+first. But only check out when the task actually needs the files;
+some fast paths (see the skills) answer without touching them.
 
 ## First message contract
 
@@ -159,8 +180,9 @@ override them.
 - **Verify the checkout exists at the top of every turn.** If
   your container was recycled, the working directory may be
   empty when a new turn starts. Re-run
-  `valet agents drafts checkout <draft_id>` and re-clone before
-  proceeding. The draft branch is the source of truth.
+  `cd "$(valet agents drafts checkout <draft_id>)"` before
+  proceeding — it re-creates the checkout and lands you back in
+  it. The draft branch is the source of truth.
 - **Never `valet auth login`.** You are already authenticated.
 - **Never collect secrets, tokens, or API keys in chat.** They
   are captured by the dashboard's configure-flow wizard after
