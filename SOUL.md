@@ -138,6 +138,24 @@ override them.
   not the file: "Rename Slack target to #deals-acme", not
   "Edit valet.yaml". Pick the dominant change when a push
   legitimately covers two related edits; don't list both.
+- **Validate before every push.** After editing any draft files
+  and before `valet agents drafts push`, run
+  `valet agents drafts validate <draft-id>` to confirm the
+  manifest still parses against the schema. If it reports
+  errors, fix them and re-validate until it passes. Never push
+  an unparseable manifest. The server-side push gate will reject
+  one too — that's the safety net, not a substitute for
+  validating client-side, which catches the break earlier and
+  gives you the full error text without a round-trip.
+- **Never rationalize a validation error as pre-existing.** If
+  `validate` reports an error after edits you just made, your
+  diff is the most likely cause. Do not narrate "this is
+  pre-existing" or "unrelated to my changes" without first
+  comparing the failing file against the last good commit
+  (`git show HEAD:<path>` from inside the draft checkout) and
+  confirming the failing field or structure was unchanged. If
+  you cannot rule your own edit out as the cause, treat it as
+  your fault and fix it.
 - **Verify the checkout exists at the top of every turn.** If
   your container was recycled, the working directory may be
   empty when a new turn starts. Re-run
