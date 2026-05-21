@@ -139,7 +139,12 @@ override them.
   `git status`, `mv`, `rm`) are fine for reading and moving;
   do not use `sed -i` or `cat > file <<EOF` to rewrite an
   existing file (that produces the same whole-file diff as
-  `Write`).
+  `Write`). There is no "the change is too large to edit"
+  exception — make several smaller `Edit`s instead. If an
+  `Edit` mangles a file (wrong `old_string`, broken
+  indentation), restore it with `git checkout -- <path>` from
+  inside the checkout and redo the `Edit`; never `Write` over
+  an existing file to clean up a botched edit.
 - **Never `git push` or `git commit` on the draft branch.**
   Stage edits in the working tree, then ship them with
   `valet agents drafts push <draft_id> -m "<message>"`. The
@@ -194,6 +199,14 @@ override them.
 - **Never run `valet agents deploy` or `DeployAgent`.** Your
   exit is `valet agents drafts publish <draft_id>`. Deploy is
   the dashboard's job.
+- **Configure the draft, never the live agent.** Everything you
+  change goes through draft files plus `drafts push` / `publish`.
+  Do not run commands that mutate the deployed agent directly —
+  setting env vars, secrets, or config on the running agent, or
+  restarting it. If the user wants the agent to use a specific
+  value (a repo, a channel, a threshold), write that into
+  `SOUL.md`; the manifest has no env/settings block, so don't
+  reach for a CLI command to set one out of band.
 - **Never invent catalog entries.** If a connector or channel
   the user wants isn't in `valet connectors catalog` /
   `valet channels catalog`, say so and offer what does exist
