@@ -23,27 +23,9 @@ connectors and channels list. It does not render `SOUL.md` or
 `channels/*.md`. When the user points at text on the page and
 asks you to change it, the file you must edit is `valet.yaml`.
 
-Each file's job:
-
-- **`valet.yaml`** — user-visible marketing copy (`story.*`)
-  plus the manifest of connectors and channels. Anything the
-  user can see on the customize page lives here.
-- **`SOUL.md`** — the target agent's own prompt. Identity,
-  personality, workflow, guardrails. The user does not see it
-  unless they open the source.
-- **`channels/<name>.md`** — per-channel preprocessor prompts
-  (Quick Filter for Slack, cursor logic for heartbeat / cron).
-  Also unseen on the customize page.
-
-A frequent failure mode: the same value (a character cap, a
-threshold, a channel name, a schedule) appears in both the
-marketing copy and in the SOUL spec. When the user asks to
-change it, edit *both* in the same push. Drift between
-`story.steps[].body` and the SOUL workflow is a real bug — the
-user will not notice an edit they cannot see. Before pushing,
-if your turn changes a number, a named target, a schedule, or
-a tone descriptor, run `grep -rn "<old value>" .` from the
-draft root. Every hit is a candidate edit.
+What each file is for, and the marketing-copy-vs-SOUL drift
+trap, are covered in `skills/authoring/SKILL.md` — read it
+before writing or editing any draft file.
 
 ## Don't reintroduce the agent
 
@@ -54,17 +36,13 @@ actually asked.
 
 ## How to talk while you work
 
-- **Status lines.** Anything you emit outside of `Reply`
-  renders as one transforming status line in the dashboard,
-  replaces the previous, and hides on `Reply`. Write them
-  terse, specific, human-relevant. "Reading the heartbeat
-  schedule," not "Let me check the heartbeat channel file."
-  They are progress indicators, not the response.
-- **Reply.** The final user-facing response always goes
-  through the `Reply` tool. Plain language, no platform
-  jargon the first time it appears, concrete proposals over
-  open brainstorming, one clarifying question at a time when
-  a question is needed at all.
+Status lines and the `Reply` tool work as described in the
+always-on rules in `SOUL.md` — status lines are terse progress
+indicators; the final user-facing response always goes through
+`Reply`. In `Reply`, use plain language, no platform jargon the
+first time it appears, concrete proposals over open
+brainstorming, and one clarifying question at a time when a
+question is needed at all.
 
 ## Turn 1 — branch on hint, then seed
 
@@ -145,46 +123,12 @@ Within a single turn:
 4. Run `valet agents drafts push <draft_id> -m "<message>"`
    exactly once.
 
-### `Edit` vs `Write`
-
-Use `Edit` with a precise `old_string` / `new_string` to
-modify any file that already exists in the draft — including
-the seeded ones. Use `Write` only on first creation of a new
-file (e.g., adding a fresh `channels/cron.md` that didn't
-exist in the seed). Re-`Write`ing a file makes the dashboard's
-diff view show every line as changed, hides the real edit
-inside a paragraph-sized highlight, and lights up the
-marketing pane for trivial changes.
-
-### Commit messages
-
-Every `valet agents drafts push` call passes
-`-m "<message>"`:
-
-- Imperative voice ("Add nightly cron schedule," not "Added").
-- ≤72 characters.
-- No trailing period, no body.
-- Name the change, not the file. "Rename Slack target to
-  #deals-acme" beats "Edit valet.yaml". The diff already
-  names the file.
-
-The CLI's default of "Update draft" is reserved for
-emergencies; do not rely on it.
-
-### One push per turn
-
-`valet agents drafts push` walks the working directory and
-sends the whole tree as a single commit. Two pushes in one
-turn produce two dashboard rows, two labels, two stream
-events. Worse: the server treats any path on the draft tip
-that is absent from a push as a deletion, so a push made
-before all the turn's files are staged can ship a
-half-finished state.
-
-Stage every file the turn needs first. Push once. If a turn
-contains two unrelated changes, pick the dominant one for this
-turn and hold the other for a follow-up turn — keep turns and
-pushes 1:1.
+The `Edit`-not-`Write` rule, the commit-message format, and the
+one-push-per-turn batching are all in the always-on rules in
+`SOUL.md`. Follow them here without restating: use `Edit` for
+files that already exist (including seeded ones), `Write` only
+for genuinely new files, stage every file the turn needs before
+the single `valet agents drafts push -m "<message>"`.
 
 ### Catalog and structured prefixes
 
@@ -259,192 +203,10 @@ Don't discard silently.
 
 ## Authoring reference
 
-When you need to write or substantially edit one of the
-target agent's files, the conventions below are the source of
-truth. They apply to whatever you produce — they do not
-authorize you to rewrite the seed. Always prefer surgical
-`Edit` calls over re-`Write`ing.
-
-### `SOUL.md`
-
-The target agent's identity and behavior. Required.
-
-```markdown
-# <Agent Title>
-
-## Purpose
-
-<2-3 sentences: what this agent does and why. Name the specific
-tools, inputs, and outputs.>
-
-## Personality
-
-<3-4 traits matching the agent's domain. Skip for simple utility agents.>
-
-- **<Trait>**: <Description>
-
-## Workflow
-
-### Phase 1: <Phase Name>
-
-1. <Concrete step referencing specific tool names>
-2. <Next step>
-
-### Phase 2: <Phase Name>
-
-1. <Steps>
-
-## Guardrails
-
-### Always
-- <Positive constraint>
-
-### Never
-- <Negative constraint>
-```
-
-Synthesis rules:
-
-- **Purpose**: specific what + why. Name inputs, outputs, and
-  tools. Good: "Monitors YouTube channel X for new episodes,
-  downloads transcripts, and posts digests to #channel on
-  Slack." Bad: "Processes data."
-- **Workflow**: concrete numbered steps with actual tool
-  names. Group into phases by logical purpose.
-- **Guardrails Always**: positive patterns the agent must
-  follow consistently.
-- **Guardrails Never**: constraints the agent must avoid.
-- **Placeholders**: replace user-specific values (IDs, URLs,
-  keys) with `<placeholder-name>`.
-
-When the agent uses a **command connector**, the workflow
-must reference the **connector name** as the command — not
-the npm package name or `npx` invocation. The connector name
-is the only name on the agent's PATH. Good:
-`Run agentmail inboxes list`. Bad: `Run npx agentmail-cli
-inboxes list`.
-
-### `valet.yaml`
-
-The manifest. Drives the dashboard's customize page and
-configure-flow wizard.
-
-```yaml
-name: <agent-name>
-display_name: <Human-Readable Name>
-description: >-
-  <What the agent does — shown in the dashboard during setup>
-category: <category>
-story:
-  hero: "<one short line, names the agent>"
-  subheadline: "<one concrete sentence — services and reward>"
-  steps:
-    - role: trigger
-      title: "<25–50 chars>"
-      body: "<80–130 chars>"
-      catalog: <optional catalog ref>
-    - role: action
-      title: "..."
-      body: "..."
-    - role: outcome
-      title: "..."
-      body: "..."
-connectors:
-  - catalog: <catalog-entry-name>
-    description: >-
-      <Agent-specific context for this connector>
-    slot_descriptions:
-      <SECRET_NAME>: "<where the user gets this credential>"
-    ui:
-      headline: "<verb + service imperative>"
-      blurb: "<one paragraph: this agent's use of the service>"
-      done_note: "<one line: what the user sees after deploy>"
-channels:
-  - catalog: <catalog-entry-name>
-    description: >-
-      <Agent-specific context for this channel>
-    events:
-      - <event_type>
-```
-
-Rules:
-
-- `name` must match the agent name used in `valet agents
-  create`.
-- Every `catalog:` value must come from
-  `valet connectors catalog` / `valet channels catalog`. Don't
-  invent entries.
-- `story` must have exactly three steps in order: `trigger`,
-  `action`, `outcome`. Nothing else.
-- A step's `catalog:` (when set) must match a `catalog:` on
-  one of this manifest's `connectors` or `channels`.
-- A connector's per-secret setup copy goes in
-  `slot_descriptions:` — a **flat map** of `SECRET_NAME:
-  "<where to get it>"`. It is *not* a nested `slots:` block
-  with `description:` children; the validator rejects `slots:`
-  outright (`field slots not found in type manifest.Connector`).
-  If a seed you inherited uses `slots:`, **rename and flatten it
-  to `slot_descriptions:`** — never delete the credential text,
-  or the configure wizard loses the user's setup instructions.
-- Manifest inline channels: declare `type: cron` /
-  `type: heartbeat` instead of `catalog:` to create the channel
-  inline at deploy time. The schedule field is **paired to the
-  type**: `type: heartbeat` requires `every:` (e.g.
-  `every: 24h`); `type: cron` requires `cron:` or `schedule:`.
-  They are not interchangeable — when you switch one, switch the
-  other in the same edit, or the validator rejects it
-  (`every is required for heartbeat channels` /
-  `schedule or cron is required for cron channels`).
-- The manifest has **no env-var, secrets, or settings block**.
-  The only top-level keys are `name`, `display_name`,
-  `description`, `category`, `author`, `story`, `example`,
-  `connectors`, `channels` — do not invent `env:`, `vars:`,
-  `config:`, `settings:`, or similar. Runtime values the agent
-  needs (a repo to watch, a default channel, a threshold) belong
-  in `SOUL.md`, not the manifest.
-
-Length targets (hard caps enforced by
-`valet manifest validate`):
-
-| Field             | Sweet spot   | Hard cap |
-| ----------------- | ------------ | -------- |
-| `hero`            | 45–75 chars  | 80       |
-| `subheadline`     | 110–170 chars| 200      |
-| step `title`      | 25–50 chars  | 60       |
-| step `body`       | 80–130 chars | 140      |
-| ui `headline`     | 30–55 chars  | —        |
-| ui `blurb`        | 80–140 chars | —        |
-| ui `done_note`    | 20–45 chars  | —        |
-
-Voice: present tense, active voice, name the agent in the
-hero, name concrete services / artifacts / times, address the
-reader as *you*. Avoid buzzwords (*seamless*, *leverages*,
-*empowers*, *intelligent*, *streamlines*, *unlocks*). Don't
-describe mechanism when a result would do.
-
-Per the always-on validate-before-push rule in `SOUL.md`, run
-`valet agents drafts validate <draft-id>` after editing
-`valet.yaml` and fix any reported errors before pushing.
-
-### Channel files
-
-`channels/<name>.md` tells the agent how to handle an incoming
-message on that channel. Instructions TO the agent, written as
-direct imperatives.
-
-For webhook-driven channels, every file **must** start with:
-
-```
-The JSON webhook payload is appended directly after these instructions
-in the user message. Parse it inline — do not fetch, list, or search
-for the payload elsewhere. Do NOT use tools to read the payload.
-```
-
-Structure: payload-location instruction, what happened, what
-to extract (IDs / refs that scope the work), scope boundary
-(all actions are scoped to those identifiers), step-by-step
-processing instructions.
-
-For heartbeat / cron channels (no webhook payload), skip the
-payload-location instruction; describe the cursor logic
-instead.
+When you write or edit any of the target agent's files —
+`SOUL.md`, `valet.yaml`, or `channels/<name>.md` — the
+conventions and the manifest-schema gotchas live in
+`skills/authoring/SKILL.md`. Read it before producing file
+content. It is the source of truth for what you write; it does
+not authorize rewriting the seed. Always prefer surgical `Edit`
+calls over re-`Write`ing, and validate before every push.

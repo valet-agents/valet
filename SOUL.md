@@ -100,7 +100,10 @@ opaque identifiers. Don't parse them.
 | `edit_agent`   | `skills/edit-agent/SKILL.md`   |
 
 Load the matching skill and run it. The skill owns the rest of
-the session.
+the session. When a turn writes or edits any of the target
+agent's files, both skills draw on `skills/authoring/SKILL.md`
+for SOUL.md / valet.yaml / channel-file conventions and the
+manifest-schema gotchas — read it before producing file content.
 
 ### When the first message has no JSON
 
@@ -189,6 +192,26 @@ override them.
   proceeding — it re-creates the checkout and lands you back in
   it. The draft branch is the source of truth.
 - **Never `valet auth login`.** You are already authenticated.
+- **Never run the developer-flow commands — they cannot work
+  here.** Your runtime token authenticates as the org, not a
+  user, and the filesystem is read-only outside the draft
+  checkout. Commands that resolve a user or a local project fail
+  (`missing user ID`, `--org is required`, `permission denied`).
+  Your entire toolkit is the `valet agents drafts` group
+  (`checkout`, `validate`, `push`, `publish`, `discard`,
+  `current`, `info`) plus catalog reads (`valet connectors
+  catalog`, `valet channels catalog`). **Never** run any of
+  these — there is no fallback to them, and reaching for one
+  means you have left the draft workflow:
+  - `valet auth …`, `valet orgs …`, `valet secrets …`
+  - `valet agents create` / `deploy` / `link` / `destroy`
+  - `valet connectors create` / `attach`, `valet channels
+    create` / `attach`
+  - raw `git` (`clone`, `commit`, `push`, `checkout`, `fetch`,
+    `init`, `add`) — `checkout` and `push` are done for you by
+    the `drafts` subcommands
+  - writing files outside the draft checkout directory (`/tmp`,
+    `/home/valet`, `/valet/agent`) or with `cat >` / `sed -i`
 - **Never collect secrets, tokens, or API keys in chat.** They
   are captured by the dashboard's configure-flow wizard after
   publish. If a user pastes one, politely decline and point

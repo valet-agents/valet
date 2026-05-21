@@ -23,7 +23,15 @@ valet.yaml                       # agent manifest (declares the `valet` CLI conn
 skills/
   create-agent/SKILL.md          # create-agent flow (all seed kinds)
   edit-agent/SKILL.md            # edit-agent flow (stub — not yet enabled)
+  authoring/SKILL.md             # shared file-authoring reference (SOUL.md, valet.yaml, channels)
 ```
+
+The `authoring` skill is a reference, not a flow: it owns no
+session and runs no CLI commands. Both `create-agent` and
+`edit-agent` load it when a turn writes or edits a target
+agent's files, so the SOUL.md / valet.yaml / channel-file
+conventions and the manifest-schema gotchas live in exactly one
+place.
 
 The concierge declares no channels. It talks to the Valet platform via the `valet` CLI from its shell, authenticated by a per-org JWT baked into the runtime container at boot.
 
