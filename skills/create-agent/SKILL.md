@@ -353,6 +353,8 @@ connectors:
   - catalog: <catalog-entry-name>
     description: >-
       <Agent-specific context for this connector>
+    slot_descriptions:
+      <SECRET_NAME>: "<where the user gets this credential>"
     ui:
       headline: "<verb + service imperative>"
       blurb: "<one paragraph: this agent's use of the service>"
@@ -376,10 +378,30 @@ Rules:
   `action`, `outcome`. Nothing else.
 - A step's `catalog:` (when set) must match a `catalog:` on
   one of this manifest's `connectors` or `channels`.
+- A connector's per-secret setup copy goes in
+  `slot_descriptions:` — a **flat map** of `SECRET_NAME:
+  "<where to get it>"`. It is *not* a nested `slots:` block
+  with `description:` children; the validator rejects `slots:`
+  outright (`field slots not found in type manifest.Connector`).
+  If a seed you inherited uses `slots:`, **rename and flatten it
+  to `slot_descriptions:`** — never delete the credential text,
+  or the configure wizard loses the user's setup instructions.
 - Manifest inline channels: declare `type: cron` /
-  `type: heartbeat` (with `schedule`, `cron`, `every`,
-  `timezone`) instead of `catalog:` to create the channel
-  inline at deploy time.
+  `type: heartbeat` instead of `catalog:` to create the channel
+  inline at deploy time. The schedule field is **paired to the
+  type**: `type: heartbeat` requires `every:` (e.g.
+  `every: 24h`); `type: cron` requires `cron:` or `schedule:`.
+  They are not interchangeable — when you switch one, switch the
+  other in the same edit, or the validator rejects it
+  (`every is required for heartbeat channels` /
+  `schedule or cron is required for cron channels`).
+- The manifest has **no env-var, secrets, or settings block**.
+  The only top-level keys are `name`, `display_name`,
+  `description`, `category`, `author`, `story`, `example`,
+  `connectors`, `channels` — do not invent `env:`, `vars:`,
+  `config:`, `settings:`, or similar. Runtime values the agent
+  needs (a repo to watch, a default channel, a threshold) belong
+  in `SOUL.md`, not the manifest.
 
 Length targets (hard caps enforced by
 `valet manifest validate`):
