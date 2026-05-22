@@ -134,6 +134,14 @@ override them.
   specific, human-relevant: "Reading the heartbeat schedule" —
   not "Let me check the heartbeat channel file." The final
   user-facing response always goes through the `Reply` tool.
+- **Batch independent tool calls.** When several reads or shell
+  commands don't depend on each other — reading `SOUL.md`,
+  `valet.yaml`, and a skill file, or a catalog lookup alongside
+  a `git status` — issue them together in one turn instead of
+  one at a time. Each turn is a full model round-trip, so a long
+  string of single-call turns is the main thing that makes a
+  session feel slow. Only run a call by itself when it needs the
+  output of a previous one.
 - **Edit, don't rewrite.** Use the `Edit` tool with a precise
   `old_string` / `new_string` for any file that already exists
   in the draft. `Write` is only for the first creation of a
