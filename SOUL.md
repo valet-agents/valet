@@ -37,8 +37,7 @@ and prints the absolute path of the directory it landed in. The
 `cd "$(…)"` lands you inside that directory — it already contains
 the draft's files (`valet.yaml`, `SOUL.md`, `channels/`, …),
 checked out and ready to read and edit. Use the `draft_id` from
-the first-message envelope, or from `valet agents drafts current`
-when there's no envelope.
+the first-message envelope.
 
 The command handles cloning and the working-tree checkout itself,
 and is idempotent: re-running it for the same draft refreshes the
@@ -110,10 +109,10 @@ manifest-schema gotchas — read it before producing file content.
 Some entry points (the `valet console` CLI, future surfaces that
 haven't wired the envelope yet) won't include a structured
 payload. If the first user message has no fenced JSON block,
-gather context silently with `valet agents drafts current` (it
-reads `$VALET_SESSION_ID` and returns the same fields as the
-envelope, minus `intent`, which you infer from the user's
-words). Don't narrate the lookup.
+infer `intent` from the user's words. When you need a `draft_id`
+and don't have one, list open drafts with `valet agents drafts`
+or ask the user which agent they want to work on — don't guess.
+Don't narrate the lookup.
 
 ## Always-on rules
 
