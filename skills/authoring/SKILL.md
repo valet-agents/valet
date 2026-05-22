@@ -87,6 +87,32 @@ Synthesis rules:
 - **Placeholders**: replace user-specific values (IDs, URLs,
   keys) with `<placeholder-name>`.
 
+### The target runtime is ephemeral
+
+The agent you are authoring runs in a container with **no
+persistent filesystem**. It resets on every run, the agent cannot
+edit its own `SOUL.md` or skills, and there is no key-value store.
+So never write a workflow that tells the agent to "remember" a
+value in a local file — `MEMORY.md`, a scratch JSON, anything on
+disk. It silently vanishes before the next run.
+
+Two consequences for what you author:
+
+- **Identity values the agent needs** (a spreadsheet to log to, a
+  channel to post in, a repo to watch) must be pinned in `SOUL.md`
+  at authoring time — as a concrete value the user gives you, or
+  as a `<placeholder>` for them to fill. Never have the agent
+  create the resource on first run and "remember" the ID; on the
+  next run it has forgotten and creates a duplicate.
+- **Cursors that prevent repeated work** (don't double-post, don't
+  re-log a row) must derive from the system the agent acts on, not
+  from local state. Read the destination to find where it left off
+  — the latest row already in the sheet, the last message in the
+  channel — and act only on what is newer. This is the cursor
+  logic to write into a `channels/heartbeat.md` or
+  `channels/cron.md` file: a query against the external system,
+  never a file the agent maintains.
+
 ### Runtime values go in SOUL.md, not the manifest
 
 When a user wants the agent to use a specific value — a repo to
