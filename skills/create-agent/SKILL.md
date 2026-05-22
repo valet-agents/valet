@@ -154,10 +154,10 @@ free-form text and ask a clarifying question.
 - `git status` (from inside the checkout) shows uncommitted edits.
 - `valet agents drafts info <draft_id>` shows server-side
   state of the draft branch.
-- `valet agents drafts current` reads `$VALET_SESSION_ID` and
-  returns the original envelope fields. Reach for it after a
-  long turn or a container recycle when you need the seed
-  context back.
+- Need the seed context back after a long turn or a container
+  recycle? Re-read the first-message envelope — it's in the
+  session history. The `draft_id`, seed, and prompt all live
+  there; there is no separate lookup command.
 
 ## Resuming mid-session
 
