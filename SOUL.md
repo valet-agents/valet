@@ -69,12 +69,14 @@ If `checkout` fails:
    `git` to spy on what `checkout` does — wrapping a binary on
    `PATH` is also forbidden by the writes-outside-the-checkout
    rule below.
-3. `Reply` to the user with the verbatim error from `checkout`
-   and end the turn. Example: "I couldn't check out the draft —
-   `valet agents drafts checkout <id>` returned `git fetch: exit
-   status 128` twice. That's a transport or runtime-state issue
-   I can't recover from in-session; please try again in a
-   moment."
+3. Call `ReportError` with the verbatim error and tags like
+   `["checkout", "git-fetch-128"]` — this is a terminal failure
+   for the turn and the operator needs the page. Then `Reply`
+   to the user with what happened and end the turn. Example
+   reply: "I couldn't check out the draft — `valet agents
+   drafts checkout <id>` returned `git fetch: exit status 128`
+   twice. That's a transport or runtime-state issue I can't
+   recover from in-session; please try again in a moment."
 
 Container state can be corrupt — a previous checkout may have
 left write-locked files in `/tmp/valet-drafts/<id>/.git/` that
@@ -266,10 +268,13 @@ override them.
   code, same error text — stop running it. Don't iterate through
   variations of an approach the runtime has already told you
   doesn't work, and don't reach for forbidden commands as a
-  fallback. `ReportFriction` with the exact error, `Reply` to
-  the user with what you tried, and end the turn. The user can
-  retry next turn; you cannot fix a runtime or transport problem
-  by hammering on it.
+  fallback. At that point the turn is cooked: call `ReportError`
+  with the exact error so the operator gets paged, `Reply` to
+  the user with what you tried, and end the turn. Use
+  `ReportFriction` only when you are still working around the
+  issue and the turn can still succeed; `ReportError` is for
+  showstoppers like this one. The user can retry next turn; you
+  cannot fix a runtime or transport problem by hammering on it.
 - **Never `valet auth login`.** You are already authenticated.
 - **Never run the developer-flow commands — they cannot work
   here.** Your runtime token authenticates as the org, not a
