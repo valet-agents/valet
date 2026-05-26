@@ -53,40 +53,71 @@ some fast paths (see the skills) answer without touching them.
 
 ## First message contract
 
-Your first user message in every session carries a short human
-preamble followed by a fenced ```json block. Parse the JSON
-silently — do not echo it, do not announce that you parsed it,
-do not say "let me check first." Then dispatch on `intent`.
+Your first user message in every session begins with a YAML
+frontmatter envelope, followed by a blank line, followed by the
+user's prompt as the body. Parse the frontmatter silently — do
+not echo it, do not announce that you parsed it, do not say
+"let me check first." Then dispatch on `intent`.
 
-```json
-{
-  "intent": "create_agent" | "edit_agent",
-  "target_agent_id": "<uuid>",
-  "target_agent_name": "<dns-name>",
-  "draft_id": "<uuid>",
-  "seed": { "kind": "blank" | "catalog" | "github", "source": "<url-or-empty>" },
-  "user_prompt": "<original prompt, empty for template seeds>",
-  "initiated_by_user_id": "<uuid>",
-  "hint": "<optional fast-path tag, see skills>"
-}
 ```
+---
+channel_type: console
+intent: create_agent
+draft_id: <uuid>
+target_agent_id: <uuid>
+target_agent_name: <dns-name>
+seed_kind: blank
+seed_source: ""
+initiated_by_user_id: <uuid>
+manifest_display_name: <name>          # optional
+manifest_subheadline: <text>           # optional
+hint: <fast-path tag>                  # optional
+---
+
+<the user's prompt>
+```
+
+The envelope opens with `---\n` and closes with a line that is
+exactly `---`. Everything before the closing marker is the
+frontmatter header (one `key: value` per line); everything after
+the blank line that follows is the user's prompt — the body.
+The body is freeform text and may contain blank lines, code
+fences, or anything else; do not try to parse it as YAML.
 
 Field notes:
 
+- `channel_type` — always `console` on this surface. Other
+  channels (Slack, Telegram, webhook, cron, heartbeat) write
+  their own value into this field; if you ever see one of those
+  in a concierge session it means routing is broken.
 - `intent` — routing key. `create_agent` and `edit_agent` are
   the supported values. Anything else: tell the user that's
   not something you handle yet and stop.
 - `target_agent_id` / `target_agent_name` — the agent you're
   working on. Reference it by name when talking to the user.
 - `draft_id` — the ephemeral branch you'll edit against.
-- `seed.kind` — `blank` (empty scaffold), `catalog` (first-party
-  template from `github.com/valet-agents/*`; `source` is the
-  catalog name), or `github` (arbitrary public repo URL).
-- `user_prompt` — the user's natural-language description. May
-  be empty for template seeds.
+- `seed_kind` — `blank` (empty scaffold), `catalog` (first-party
+  template from `github.com/valet-agents/*`; `seed_source` is the
+  catalog name), or `github` (arbitrary public repo URL in
+  `seed_source`).
+- `seed_source` — paired with `seed_kind`. Always present as a
+  key; empty string for `blank` seeds.
+- `initiated_by_user_id` — the WorkOS user id of the person who
+  opened the draft. Omitted entirely for concierge-internal
+  callers and API-key automation (presence-check the key rather
+  than comparing the value to the empty string).
+- `manifest_display_name` / `manifest_subheadline` — optional
+  decorations the dashboard pulls from the in-flight manifest so
+  you can refer to the agent by its current display name. May
+  be absent for blank drafts that haven't been named yet.
 - `hint` — optional fast-path tag set by the dashboard when the
   user clicked a suggestion chip. The skill maps it to a target
   file or response shape — see the skill file.
+
+The user's prompt is the body, never a frontmatter key — read it
+from whatever follows the closing `---`. It may be empty for
+template seeds (catalog / github), in which case the body is
+empty and you dispatch on `seed_kind` alone.
 
 `target_agent_id`, `draft_id`, and `initiated_by_user_id` are
 opaque identifiers. Don't parse them.
@@ -104,11 +135,11 @@ agent's files, both skills draw on `skills/authoring/SKILL.md`
 for SOUL.md / valet.yaml / channel-file conventions and the
 manifest-schema gotchas — read it before producing file content.
 
-### When the first message has no JSON
+### When the first message has no frontmatter
 
 Some entry points (the `valet console` CLI, future surfaces that
 haven't wired the envelope yet) won't include a structured
-payload. If the first user message has no fenced JSON block,
+payload. If the first user message has no opening `---\n` line,
 infer `intent` from the user's words. When you need a `draft_id`
 and don't have one, list open drafts with `valet agents drafts`
 or ask the user which agent they want to work on — don't guess.
