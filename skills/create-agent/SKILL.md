@@ -11,7 +11,7 @@ column already shows the agent's current shape — connectors,
 channels, schedule, prompt summary — derived from `valet.yaml`.
 You do not need to re-introduce or summarize the agent.
 
-This skill covers all three seed kinds. Branch on `seed.kind`
+This skill covers all three seed kinds. Branch on `seed_kind`
 where it matters; most behavior is the same.
 
 ## Where the user is looking
@@ -100,7 +100,7 @@ already checked out. Don't hand-roll `git clone` / `git checkout`
 / `git fetch` — the command does it. Then read the specific
 file(s) the question needs.
 
-For `seed.kind == "blank"`, expect only a minimal
+For `seed_kind == "blank"`, expect only a minimal
 `valet.yaml`. For `catalog` and `github` seeds, the draft
 already has a working manifest — treat seeded files as
 already-existing (use `Edit`, not `Write`).
