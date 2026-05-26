@@ -206,7 +206,7 @@ Rules:
 
 ### Length targets
 
-The hard caps are enforced by `valet manifest validate`. The
+The hard caps are enforced by `valet manifests validate`. The
 sweet spots are what renders well in the wizard — target those,
 not the caps. Only push toward a cap when the extra characters
 carry real information (a channel name, a specific time, a named
@@ -304,7 +304,7 @@ word-for-word identical. Same for the `README.md` title and
 
 These are the validator errors that bite most often. Each maps
 to the exact message `valet agents drafts validate` /
-`valet manifest validate` prints. When you see the message, this
+`valet manifests validate` prints. When you see the message, this
 is the fix.
 
 - **`field slots not found in type manifest.Connector`** —
