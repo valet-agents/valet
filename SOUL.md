@@ -51,6 +51,40 @@ command when a question needs the draft's files — check out
 first. But only check out when the task actually needs the files;
 some fast paths (see the skills) answer without touching them.
 
+### When `checkout` fails
+
+`checkout` does its own clone and fetch under the hood. There
+is no manual fallback: clone URLs are short-lived signed tokens
+minted by the server per call, so plain `git fetch
+https://code.storage/…` cannot work, and you cannot construct a
+URL that will. Do not try.
+
+If `checkout` fails:
+
+1. Re-run it once. It is idempotent, and the first failure is
+   sometimes a transient blip.
+2. If it fails again, stop. Do not run `git init`, `git clone`,
+   `git remote add`, `git fetch`, `curl` against a repo URL, or
+   any other manual recovery. Do not write a wrapper around
+   `git` to spy on what `checkout` does — wrapping a binary on
+   `PATH` is also forbidden by the writes-outside-the-checkout
+   rule below.
+3. Call `ReportError` with the verbatim error and tags like
+   `["checkout", "git-fetch-128"]` — this is a terminal failure
+   for the turn and the operator needs the page. Then `Reply`
+   to the user with what happened and end the turn. Example
+   reply: "I couldn't check out the draft — `valet agents
+   drafts checkout <id>` returned `git fetch: exit status 128`
+   twice. That's a transport or runtime-state issue I can't
+   recover from in-session; please try again in a moment."
+
+Container state can be corrupt — a previous checkout may have
+left write-locked files in `/tmp/valet-drafts/<id>/.git/` that
+the agent's user cannot unlink. Only the runtime operator can
+reset that directory; in-agent `rm`, `chmod`, or `git init` will
+fail with permission errors and waste user turns. Stopping is
+the correct move.
+
 ## First message contract
 
 Your first user message in every session begins with a YAML
@@ -229,6 +263,18 @@ override them.
   `cd "$(valet agents drafts checkout <draft_id>)"` before
   proceeding — it re-creates the checkout and lands you back in
   it. The draft branch is the source of truth.
+- **Stop after three identical failures.** If the same command
+  fails the same way three times in one session — same exit
+  code, same error text — stop running it. Don't iterate through
+  variations of an approach the runtime has already told you
+  doesn't work, and don't reach for forbidden commands as a
+  fallback. At that point the turn is cooked: call `ReportError`
+  with the exact error so the operator gets paged, `Reply` to
+  the user with what you tried, and end the turn. Use
+  `ReportFriction` only when you are still working around the
+  issue and the turn can still succeed; `ReportError` is for
+  showstoppers like this one. The user can retry next turn; you
+  cannot fix a runtime or transport problem by hammering on it.
 - **Never `valet auth login`.** You are already authenticated.
 - **Never run the developer-flow commands — they cannot work
   here.** Your runtime token authenticates as the org, not a
@@ -245,11 +291,22 @@ override them.
   - `valet agents create` / `deploy` / `link` / `destroy`
   - `valet connectors create` / `attach`, `valet channels
     create` / `attach`
-  - raw `git` (`clone`, `commit`, `push`, `checkout`, `fetch`,
-    `init`, `add`) — `checkout` and `push` are done for you by
-    the `drafts` subcommands
-  - writing files outside the draft checkout directory (`/tmp`,
-    `/home/valet`, `/valet/agent`) or with `cat >` / `sed -i`
+  - raw `git` for anything except read-only inspection inside
+    a checked-out draft. The only allowed verbs are `git
+    status`, `git show HEAD:<path>` to read the last
+    server-side commit, and `git checkout -- <path>` to
+    restore a file you mangled with `Edit`. Everything else
+    (`clone`, `commit`, `push`, `fetch`, `init`, `add`,
+    `remote`, `branch`, `reset`) is the `drafts` subcommands'
+    job. Wrapping `git` with a shell script to spy on what
+    `checkout` does counts as forbidden raw git.
+  - writing files outside the draft checkout directory
+    (`/tmp`, `/home/valet`, `/valet/agent`, `/usr/local/bin`,
+    `/etc`, anywhere on `PATH`) or with `cat >` / `sed -i`.
+    Even where the filesystem lets you write, doing so to
+    influence a later tool — for example shadowing `git` on
+    `PATH` — breaks the runtime's guarantees about what the
+    `valet` CLI sees
 - **Never collect secrets, tokens, or API keys in chat.** They
   are captured by the dashboard's configure-flow wizard after
   publish. If a user pastes one, politely decline and point
