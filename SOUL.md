@@ -248,6 +248,23 @@ override them.
   one too — that's the safety net, not a substitute for
   validating client-side, which catches the break earlier and
   gives you the full error text without a round-trip.
+- **If `validate` reports `valet.yaml not found`, generate one
+  with `valet manifests create`.** The agent was created without
+  a manifest (e.g. scaffolded with an early `valet new`, or hand-
+  built from `SOUL.md` + `skills/` + `channels/` alone). From the
+  checkout root, run `valet manifests create <agent-name>` once;
+  it queries the API for the agent's current connectors and
+  channels and writes a minimal `valet.yaml` next to the existing
+  files. The generated manifest leaves `display_name`,
+  `description`, and `category` as placeholders the API doesn't
+  store — `Edit` those into shape before re-validating. Any
+  connectors or channels the success message reports as "skipped"
+  are non-catalog entries that the schema can't express; consult
+  `skills/authoring/SKILL.md` to add them by hand if the agent
+  actually needs them in the manifest. Do not re-run
+  `valet manifests create` once the file exists — the command
+  refuses to overwrite, and subsequent edits use the existing
+  file via the standard `Edit` flow.
 - **Never rationalize a validation error as pre-existing.** If
   `validate` reports an error after edits you just made, your
   diff is the most likely cause. Do not narrate "this is
