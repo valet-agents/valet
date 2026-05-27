@@ -1,0 +1,24 @@
+name: <EDIT — agent-name (lowercase DNS label, e.g. lead-qualifier)>
+display_name: <EDIT — Human-Readable Name, e.g. Lead Qualifier>
+description: >-
+  <EDIT — one sentence shown in the dashboard during setup>
+category: <EDIT — e.g. ops, development, sales, support>
+story:
+  hero: "<EDIT — 45-75 chars naming the agent, e.g. \"A Slack bot that scores new leads against your ICP.\">"
+  subheadline: "<EDIT — 110-170 chars naming the services and the reward>"
+  steps:
+    - role: trigger
+      title: "<EDIT — 25-50 chars, e.g. \"A new lead arrives.\">"
+      body: "<EDIT — 80-130 chars describing the trigger concretely>"
+    - role: action
+      title: "<EDIT — 25-50 chars naming the agent, e.g. \"Lead Qualifier scores it.\">"
+      body: "<EDIT — 80-130 chars describing what the agent does>"
+    - role: outcome
+      title: "<EDIT — 25-50 chars naming the artifact, e.g. \"Posts a one-line summary in #sales-leads.\">"
+      body: "<EDIT — 80-130 chars describing the outcome>"
+
+# connectors: filled in during the tool-discovery stage of the interview.
+# channels: filled in during the tool-discovery stage of the interview.
+
+concierge:
+  status: drafting

@@ -1,39 +1,47 @@
 ---
 name: authoring
-description: Reference for writing a target agent's files — SOUL.md, valet.yaml, and channel files. Loaded by create-agent and edit-agent whenever a turn writes or edits draft files. This is a reference, not a flow: it owns no session and never runs CLI lifecycle commands.
+description: Reference for writing a target agent's files — `SOUL.md`, `valet.yaml`, and `channels/<name>.md`. Loaded by every scenario whenever a turn writes or edits draft files. This is a reference, not a flow: it owns no session and runs no CLI lifecycle commands.
 ---
 
 # Authoring reference
 
-The conventions below are the source of truth for any file you
-write into a draft. They tell you *how to write* — they do not
-authorize you to rewrite the seed. For `catalog` and `github`
-seeds the draft already has working files; treat them as
-existing and prefer surgical `Edit` calls over re-`Write`ing.
-The `Edit`-not-`Write` rule and the validate-before-push rule
-in `SOUL.md` apply to everything here.
+The conventions below are the source of truth for any file the concierge writes into a draft.
+
+The flow rules (`Edit` not `Write`, validate-before-push, one push per turn) live in `skills/iterate/SKILL.md`. The interview ordering lives in `skills/interview/SKILL.md`. This file is about *file shape* only.
 
 ## What each file is for
 
-- **`valet.yaml`** — user-visible marketing copy (`story.*`)
-  plus the manifest of connectors and channels. Anything the
-  user can see on the customize page lives here.
-- **`SOUL.md`** — the target agent's own prompt. Identity,
-  personality, workflow, guardrails. The user does not see it
-  unless they open the source.
-- **`channels/<name>.md`** — per-channel preprocessor prompts
-  (Quick Filter for Slack, cursor logic for heartbeat / cron).
-  Also unseen on the customize page.
+- **`valet.yaml`** — the manifest. User-visible marketing copy (`story.*`) plus the connector / channel declarations. Everything the user sees on the customize page comes from this file.
+- **`SOUL.md`** — the target agent's own prompt. Identity, configuration values, purpose, workflow, guardrails. The user does not see it unless they open the source.
+- **`channels/<name>.md`** — per-channel preprocessor prompts (e.g. Quick Filter for Slack, cursor logic for heartbeat / cron). Not shown on the customize page.
 
-A frequent failure mode: the same value (a character cap, a
-threshold, a channel name, a schedule) appears in both the
-marketing copy and the SOUL spec. When the user asks to change
-it, edit *both* in the same push. Drift between
-`story.steps[].body` and the SOUL workflow is a real bug — the
-user will not notice an edit they cannot see. Before pushing,
-if your turn changes a number, a named target, a schedule, or a
-tone descriptor, run `grep -rn "<old value>" .` from the draft
-root. Every hit is a candidate edit.
+## The Configuration — edit before deploy convention
+
+The seed `SOUL.md` templates open with a `## Configuration — edit before deploy` section that holds the runtime values the agent reads each fire — output channel, criteria, schedule, source-of-truth system. The rest of `SOUL.md` references those values **by name** rather than hard-coding them:
+
+> *"…and post to the **Output destination** above."*
+
+Why: when the user wants to change a value, the edit is a single bullet, not a hunt through prose. When the concierge edits a value (e.g. swapping the destination channel), the rest of the file is automatically consistent.
+
+When you add a new runtime value to an agent, put it in the Configuration section and reference it by **bolded name** elsewhere — never duplicate the value inline. Drift between Configuration and the rest of `SOUL.md` is a real bug.
+
+## The `<EDIT — …>` marker convention
+
+Anywhere a value still needs to be filled in by the user, write:
+
+```
+<EDIT — short example or hint>
+```
+
+The em-dash separates the marker from a concrete example. Examples:
+
+- `<EDIT — e.g. you@example.com>`
+- `<EDIT — 2-3 sentences naming what this agent does>`
+- `<EDIT — concrete step naming a specific tool>`
+
+The interview drives the concierge to find the next `<EDIT` and ask about it. The invariant: **any remaining `<EDIT` marker anywhere in the draft forces `concierge.status: drafting` in `valet.yaml`.**
+
+Don't use `<EDIT>` for output-format slots (`<name>`, `<id>`, `<repo>`) — those are runtime tokens the agent fills at execution time, not human-fill placeholders. They use bare angle brackets without `EDIT —`.
 
 ## SOUL.md
 
@@ -42,118 +50,75 @@ The target agent's identity and behavior. Required.
 ```markdown
 # <Agent Title>
 
+## Configuration — edit before deploy
+
+The agent reads these values from this section every fire. …
+
+- **<Value name>:** `<value or <EDIT — hint>>`
+- **<Value name>:** `…`
+
 ## Purpose
 
-<2-3 sentences: what this agent does and why. Name the specific
+<2-3 sentences naming what this agent does and why. Name the specific
 tools, inputs, and outputs.>
-
-## Personality
-
-<3-4 traits matching the agent's domain. Skip for simple utility agents.>
-
-- **<Trait>**: <Description>
 
 ## Workflow
 
-### Phase 1: <Phase Name>
-
-1. <Concrete step referencing specific tool names>
-2. <Next step>
-
-### Phase 2: <Phase Name>
-
-1. <Steps>
+<Archetype-shaped. See seeds/ for the four shapes.>
 
 ## Guardrails
 
 ### Always
-- <Positive constraint>
+- <Required outcome. "Always" guardrails encode what done looks like.>
 
 ### Never
-- <Negative constraint>
+- <Bounded constraint.>
 ```
 
-Synthesis rules:
+Other sections are optional and only needed when the archetype requires them:
 
-- **Purpose**: specific what + why. Name inputs, outputs, and
-  tools. Good: "Monitors YouTube channel X for new episodes,
-  downloads transcripts, and posts digests to #channel on
-  Slack." Bad: "Processes data."
-- **Workflow**: concrete numbered steps with actual tool names.
-  Group into phases by logical purpose.
-- **Guardrails Always**: positive patterns the agent must
-  follow consistently.
-- **Guardrails Never**: constraints the agent must avoid.
-- **Placeholders**: replace user-specific values (IDs, URLs,
-  keys) with `<placeholder-name>`.
+- **Cursor** — required for `stateful` and `monitor` archetypes. Names where state lives and how to read it.
+- **Personality** — optional. Weight varies by archetype: maximal for stateful conversational agents, modest for transform, low for investigation.
+- **Webhook Scope Rule** — required when any channel is webhook-driven. Scopes the agent's actions to the identifiers in the payload (see Channel files below).
+
+### Synthesis rules
+
+- **Purpose:** specific *what* + *why*. Name inputs, outputs, and tools. *"Monitors YouTube channel X for new episodes, downloads transcripts, and posts digests to #channel on Slack."* Not *"Processes data."*
+- **Workflow:** concrete numbered steps with actual tool names. For investigation and stateful archetypes the "steps" are scaffolding for an open-ended loop or state machine; for transform and monitor they're a linear pipeline.
+- **Guardrails — Always:** positive patterns the agent must follow *every* fire. This is the right place for "End by posting to **Output destination**" — *required outcomes are guardrails, not workflow steps.*
+- **Guardrails — Never:** constraints the agent must avoid. Bounded; specific.
+- **Placeholders:** for user-specific values (IDs, URLs, channel names) use `<EDIT — hint>`; for runtime-filled output slots use bare `<name>`.
 
 ### The target runtime is ephemeral
 
-The agent you are authoring runs in a container with **no
-persistent filesystem**. It resets on every run, the agent cannot
-edit its own `SOUL.md` or skills, and there is no key-value store.
-So never write a workflow that tells the agent to "remember" a
-value in a local file — `MEMORY.md`, a scratch JSON, anything on
-disk. It silently vanishes before the next run.
+The agent you are authoring runs in a container with **no persistent filesystem.** It resets on every run; the agent cannot edit its own `SOUL.md` or skills; there is no key-value store. So never write a workflow that tells the agent to "remember" a value in a local file (`MEMORY.md`, scratch JSON, anything on disk). It silently vanishes before the next run.
 
-Two consequences for what you author:
+Consequences:
 
-- **Identity values the agent needs** (a spreadsheet to log to, a
-  channel to post in, a repo to watch) must be pinned in `SOUL.md`
-  at authoring time — as a concrete value the user gives you, or
-  as a `<placeholder>` for them to fill. Never have the agent
-  create the resource on first run and "remember" the ID; on the
-  next run it has forgotten and creates a duplicate.
-- **Cursors that prevent repeated work** (don't double-post, don't
-  re-log a row) must derive from the system the agent acts on, not
-  from local state. Read the destination to find where it left off
-  — the latest row already in the sheet, the last message in the
-  channel — and act only on what is newer. This is the cursor
-  logic to write into a `channels/heartbeat.md` or
-  `channels/cron.md` file: a query against the external system,
-  never a file the agent maintains.
+- **Identity values the agent needs** (a spreadsheet to log to, a channel to post in, a repo to watch) must be pinned in the Configuration section of `SOUL.md` — as a concrete value the user gives you, or as an `<EDIT — hint>` for them to fill in. Never have the agent create the resource on first run and "remember" the ID; on the next run it will have forgotten and create a duplicate.
+- **Cursors that prevent repeated work** (don't double-post, don't re-log a row) must derive from the system the agent acts on, not from local state. Read the destination to find where it left off — the latest row already in the sheet, the last message in the channel, a label or tag on already-handled items. This is the cursor logic the `stateful` and `monitor` seed templates already make explicit.
 
 ### Runtime values go in SOUL.md, not the manifest
 
-When a user wants the agent to use a specific value — a repo to
-watch, a default channel, a threshold, a timezone — write that
-value into `SOUL.md`. The manifest has **no** env/settings
-block (see "Manifest schema gotchas"), so there is nowhere in
-`valet.yaml` to put it. A request phrased as "set the REPOS env
-var" still resolves to a SOUL.md edit naming the repo
-concretely, never a manifest `env:` entry.
+A user request like *"set the REPOS env var"* resolves to a SOUL.md Configuration edit naming the repo concretely, never a manifest `env:` entry. The manifest has **no** env/vars/config/settings block — see Manifest schema gotchas below.
 
 ### Command connector references
 
-When the agent uses a **command connector**, the workflow must
-reference the **connector name** as the command — not the npm
-package name or `npx` invocation. The connector name is the only
-name on the agent's PATH. Good: `Run agentmail inboxes list`.
-Bad: `Run npx agentmail-cli inboxes list` (bypasses secret
-injection) or `Run agentmail-cli inboxes list` (command not
-found).
+When the agent uses a **command connector**, the workflow must reference the **connector name** as the command — not the npm package name or `npx` invocation. The connector name is the only name on the agent's PATH.
 
-### Common mistakes
-
-- Empty or vague Purpose — always name specific inputs, tools,
-  and outputs.
-- Missing Workflow — Purpose without steps leaves the agent
-  guessing.
-- Hardcoded values that should be `<placeholder>`s.
-- No scope boundary for webhook agents (see "Channel files").
-- Wrong command name for a command connector — it must match the
-  CLI command (e.g. `agentmail`, not `agentmail-cli`).
+- ✅ `Run agentmail inboxes list`
+- ❌ `Run npx agentmail-cli inboxes list` (bypasses secret injection)
+- ❌ `Run agentmail-cli inboxes list` (command not found)
 
 ## valet.yaml
 
-The manifest. Drives the dashboard's customize page and
-configure-flow wizard.
+The manifest. Drives the dashboard's customize page and configure-flow wizard.
 
 ```yaml
 name: <agent-name>
 display_name: <Human-Readable Name>
 description: >-
-  <What the agent does — shown in the dashboard during setup>
+  <One sentence shown in the dashboard during setup>
 category: <category>
 story:
   hero: "<one short line, names the agent>"
@@ -162,55 +127,39 @@ story:
     - role: trigger
       title: "<25–50 chars>"
       body: "<80–130 chars>"
-      catalog: <optional catalog ref>
     - role: action
-      title: "..."
-      body: "..."
+      title: "<25–50 chars>"
+      body: "<80–130 chars>"
     - role: outcome
-      title: "..."
-      body: "..."
+      title: "<25–50 chars>"
+      body: "<80–130 chars>"
 connectors:
   - catalog: <catalog-entry-name>
     description: >-
       <Agent-specific context for this connector>
-    slot_descriptions:
-      <SECRET_NAME>: "<where the user gets this credential>"
-    ui:
-      headline: "<verb + service imperative>"
-      blurb: "<one paragraph: this agent's use of the service>"
-      done_note: "<one line: what the user sees after deploy>"
 channels:
   - catalog: <catalog-entry-name>
     description: >-
       <Agent-specific context for this channel>
     events:
       - <event_type>
+
+concierge:
+  status: drafting   # the concierge owns this — see SOUL.md
 ```
 
 Rules:
 
 - `name` must match the agent name used to create the agent.
-- Every `catalog:` value must come from
-  `valet connectors catalog` / `valet channels catalog`. Don't
-  invent entries; if the user wants something not in the
-  catalog, say so and offer what exists.
-- `story` must have exactly three steps in order: `trigger`,
-  `action`, `outcome`. Nothing else.
-- A step's `catalog:` (when set) must match a `catalog:` on one
-  of this manifest's `connectors` or `channels`. Leave it empty
-  to render the agent monogram (useful for the middle "the agent
-  thinks" step).
-- Omit `connectors` / `channels` arrays entirely when the agent
-  has none. Omit optional fields (`description`, `events`,
-  `slot_descriptions`, `ui`) when catalog defaults suffice.
+- Every `catalog:` value must come from `valet connectors catalog` / `valet channels catalog`. Don't invent entries; see `skills/tool-discovery/SKILL.md`.
+- `story` must have exactly three steps, in order: `trigger`, `action`, `outcome`.
+- A step's `catalog:` (when set) must match a `catalog:` on this manifest's `connectors:` or `channels:`. Leave it empty to render the agent monogram (useful for the middle "the agent thinks" step).
+- `concierge.status` is `drafting` while the interview is in progress, `ready` when no `<EDIT` markers remain. The concierge owns this field; don't ask the user about it.
+- Omit `connectors:` / `channels:` arrays entirely when the agent has none. Omit optional fields (`description`, `events`, `slot_descriptions`, `ui`) when catalog defaults suffice.
 
 ### Length targets
 
-The hard caps are enforced by `valet manifests validate`. The
-sweet spots are what renders well in the wizard — target those,
-not the caps. Only push toward a cap when the extra characters
-carry real information (a channel name, a specific time, a named
-artifact). Never pad.
+The hard caps are enforced by the validator. The sweet spots are what renders well in the wizard — target those, not the caps. Only push toward a cap when the extra characters carry real information.
 
 | Field             | Sweet spot    | Hard cap |
 | ----------------- | ------------- | -------- |
@@ -226,125 +175,39 @@ artifact). Never pad.
 
 **Always:**
 
-- Present tense, active voice. *"Posts the briefing"*, not
-  *"Will post the briefing"* or *"The briefing is posted"*.
-- Name the agent at least once in the hero — the user is meeting
-  it for the first time.
-- Name concrete things: services (*Slack*, *GitHub*), artifacts
-  (*#ai-news*, *pull request*), times (*8am*, *every Friday*).
-  Never *"messaging platforms"* or *"on a schedule"*.
+- Present tense, active voice. *"Posts the briefing"*, not *"Will post the briefing"* or *"The briefing is posted"*.
+- Name the agent at least once in the hero — the user is meeting it for the first time.
+- Name concrete things: services (*Slack*, *GitHub*), artifacts (*#ai-news*, *pull request*), times (*8am*, *every Friday*).
 - Address the reader as *you*. Never *"the user"*.
 
 **Never:**
 
-- Buzzwords: *seamless*, *leverages*, *empowers*, *intelligent*,
-  *cutting-edge*, *streamlines*, *unlocks*, *powerful*, *robust*.
+- Buzzwords: *seamless*, *leverages*, *empowers*, *intelligent*, *cutting-edge*, *streamlines*, *unlocks*, *powerful*, *robust*.
 - Passive voice for the action step.
-- Mechanism where a result would do. *"Authenticates via OAuth"*
-  is mechanism; *"Uses OAuth — no API token needed"* is a
-  result. *"Parses the payload"* is mechanism; *"Reads the PR"*
-  is a result.
-- Copy that could belong to a different agent. If you can swap
-  the agent's name out without the sentence breaking, it's
-  generic — add the hook.
-
-### Per-field tone
-
-- **Hero** is imperative or present-indicative and names the
-  agent: *"Let's get AskADev answering questions for your
-  team."* — not *"AskADev is an AI agent that answers
-  questions."*
-- **Subheadline** is one concrete sentence naming the services
-  and the reward. No lists, no semicolons.
-- **Trigger title** starts with the user or the channel event:
-  *"Your team asks…"*, *"A PR is opened."*, *"8am hits."*
-- **Action title** uses active voice and names the agent:
-  *"AskADev reads your code."*
-- **Outcome title** names the concrete artifact the user sees:
-  *"Replies in-thread, linking to the file."*
-
-### Good vs. bad
-
-| Field | ❌ Bad | ✅ Good |
-|-------|-------|--------|
-| hero | *"AskADev is an AI-powered Slack assistant that answers code questions."* | *"A Slack bot that reads your code before it answers."* |
-| subheadline | *"Uses GitHub MCP and Slack MCP to provide intelligent responses."* | *"Ask about a GitHub repo in Slack. AskADev researches the code and commit history, then replies in-thread."* |
-| trigger title | *"Webhook event received"* | *"A PR is opened."* |
-| action title | *"Diff analysis"* | *"Code Reviewer reads the diff."* |
-| outcome title | *"Review submitted"* | *"Inline comments — or an approve."* |
-| ui blurb | *"Connect your GitHub account to give the agent access."* | *"AskADev reads your code when it answers — like a new hire would."* |
-| ui done_note | *"Successfully connected"* | *"Listening in #engineering"* |
-
-### Per-service `ui:` block
-
-Each `connectors[]` / `channels[]` entry can carry a `ui:` block
-that overrides generic catalog copy:
-
-- `headline` — verb + service imperative: *"Let AskADev hear
-  your team in Slack."*
-- `blurb` — one paragraph on *this specific agent's* use of the
-  service. Not a generic Slack/GitHub explainer — that's what
-  the catalog `description` is for.
-- `done_note` — the one line shown on the deploy screen once the
-  service connects: *"Listening in #engineering"*,
-  *"Connected to valetdotdev/ark"*.
-
-Do **not** put permissions, restrictions, safety chips, "why",
-verb, or minutes in `ui:` — those are catalog-owned fields the
-Valet team fills in.
+- Mechanism where a result would do. *"Authenticates via OAuth"* is mechanism; *"Uses OAuth — no API token needed"* is a result.
 
 ### Keep valet.yaml and README.md in sync
 
-The agent's `README.md` tagline and the `valet.yaml`
-`subheadline` are the same copy on two surfaces — keep them
-word-for-word identical. Same for the `README.md` title and
-`display_name`. Update one, update the other in the same push.
+If the agent's `README.md` ships a tagline, it must match `subheadline` word-for-word. Same for the `README.md` title and `display_name`. Update one, update the other in the same push.
 
 ## Manifest schema gotchas
 
-These are the validator errors that bite most often. Each maps
-to the exact message `valet agents drafts validate` /
-`valet manifests validate` prints. When you see the message, this
-is the fix.
+These are the validator errors that bite most often.
 
-- **`field slots not found in type manifest.Connector`** —
-  per-secret setup copy goes in `slot_descriptions:`, a **flat
-  map** of `SECRET_NAME: "<where to get it>"`. It is *not* a
-  nested `slots:` block with `description:` children. If a seed
-  uses `slots:`, rename and flatten it to `slot_descriptions:` —
-  never delete the credential text, or the configure wizard
-  loses the user's setup instructions.
-- **`field env not found in type manifest.Manifest`** (also
-  `vars`, `config`, `settings`) — the manifest has **no**
-  env/vars/config/settings block. The only top-level keys are
-  `name`, `display_name`, `description`, `category`, `author`,
-  `story`, `example`, `connectors`, `channels`. Runtime values
-  the agent needs belong in `SOUL.md` (see "Runtime values go in
-  SOUL.md").
-- **`every is required for heartbeat channels`** /
-  **`schedule or cron is required for cron channels`** — inline
-  channels pair the schedule field to the type. `type: heartbeat`
-  requires `every:` (e.g. `every: 24h`); `type: cron` requires
-  `cron:` or `schedule:`. They are not interchangeable — switch
-  both together in the same edit.
-- **`body must be 140 characters or fewer`** (and the other
-  length caps) — see the length-targets table above. Trim to the
-  sweet spot, don't just squeak under the cap.
-- **catalog reference won't resolve** — every `catalog:` value,
-  including a step's `catalog:`, must name a real catalog entry
-  or a connector/channel declared in this same manifest.
-
-Per the validate-before-push rule in `SOUL.md`, run
-`valet agents drafts validate <draft-id>` after editing
-`valet.yaml` and fix every reported error before pushing.
+- **`field slots not found in type manifest.Connector`** — per-secret setup copy goes in `slot_descriptions:`, a flat map of `SECRET_NAME: "<where to get it>"`. It's not a nested `slots:` block.
+- **`field env not found in type manifest.Manifest`** (also `vars`, `config`, `settings`) — the manifest has no env/vars/config/settings block. The only top-level keys are `name`, `display_name`, `description`, `category`, `author`, `story`, `example`, `connectors`, `channels`, `concierge`. Runtime values belong in `SOUL.md`'s Configuration section.
+- **`every is required for heartbeat channels`** / **`schedule or cron is required for cron channels`** — inline channels pair the schedule field to the type. `type: heartbeat` requires `every:`; `type: cron` requires `cron:` or `schedule:`. Switch both fields together.
+- **`body must be 140 characters or fewer`** (and the other length caps) — see the table above. Trim to the sweet spot, don't squeak under the cap.
+- **catalog reference won't resolve** — every `catalog:` value, including a step's `catalog:`, must name a real catalog entry or a connector/channel declared on this manifest.
+- **`concierge: status must be one of drafting, ready`** — only those two values are valid. Don't add ad-hoc statuses.
 
 ## Channel files
 
-`channels/<name>.md` tells the agent how to handle an incoming
-message on that channel. Instructions TO the agent, written as
-direct imperatives.
+`channels/<name>.md` tells the agent how to handle an incoming message on that channel. Instructions TO the agent, written as direct imperatives.
 
-For webhook-driven channels, the file **must** start with:
+### Webhook payload location (required for webhook channels)
+
+Webhook-driven channel files **must** start with this verbatim block:
 
 ```
 The JSON webhook payload is appended directly after these instructions
@@ -352,24 +215,21 @@ in the user message. Parse it inline — do not fetch, list, or search
 for the payload elsewhere. Do NOT use tools to read the payload.
 ```
 
-Without this, agents waste turns hunting for the payload with
-tool calls.
+Without it, agents waste turns hunting for the payload with tool calls.
 
-Structure:
+### Structure
 
-1. **Payload location** — the instruction above.
+1. **Payload location** — the instruction above (webhook only).
 2. **What happened** — describe the event.
-3. **What to extract** — which payload fields identify the work
-   (IDs, refs).
-4. **Scope boundary** — all actions are scoped to those
-   identifiers; do not act on unrelated content.
+3. **What to extract** — which payload fields identify the work (IDs, refs).
+4. **Scope boundary** — all actions are scoped to those identifiers; do not act on unrelated content.
 5. **Steps** — step-by-step processing instructions.
 
-For heartbeat / cron channels (no webhook payload), skip the
-payload-location instruction and describe the cursor logic
-instead.
+For heartbeat / cron channels (no webhook payload), skip the payload-location instruction and describe the cursor logic instead (see the `monitor` and `stateful` seeds).
 
-For webhook-driven agents, reinforce the boundary in `SOUL.md`:
+### Reinforce scope in SOUL.md
+
+For webhook-driven agents, add to `SOUL.md`:
 
 ```markdown
 ## Webhook Scope Rule
